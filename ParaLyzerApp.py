@@ -84,9 +84,10 @@ class ParaLyzerApp(StatusBar):
                     'stf': 'Stream Folder',
                     'wac': 'Write Config',
                     'usr': 'Define Switching...',
-                    'sts': 'Start',    # and Stop...
+                    'sts': 'Start',                 # and Stop Arduino, HF2 and tilter...
                     'wtc': 'Write Config',
-                    'rtm': 'Reset'
+                    'rtm': 'Reset',
+                    'stt': 'Start'                  # tilter
                 }
 
         self.lbl_txts = {
@@ -122,7 +123,7 @@ class ParaLyzerApp(StatusBar):
                     'ofa': 'One for all',
                     'scv': 'Same cnt + via',
                     'swt': 'Sync with tilter',
-                    'prc': 'Pause recoring'
+                    'prc': 'Pause recording'
                 }
         
         # define color for highlighted fields
