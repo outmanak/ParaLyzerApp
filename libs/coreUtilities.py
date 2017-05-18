@@ -263,6 +263,35 @@ def GetMinSecFromString(tString):
             pass
     
     return mins, secs
+    
+### -------------------------------------------------------------------------------------------------------------------------------
+
+def GetStringFromMinSec(secs, mins=-1):
+    
+    tString = ''
+    
+    if not isinstance(secs, int) or not isinstance(mins, int):
+        raise Exception('Expected int for secs and mins!')
+    
+    if mins == -1:
+        
+        # all zero
+        if secs == 0:
+            tString = '00:00'
+            
+        # only seconds
+        elif secs >= 1 and secs <= 59:
+            tString = '0:%s' % secs
+            
+        # seconds and minutes in secs
+        elif secs >= 60 and secs <= 9959:
+            tString = '%s:%s' % (str(secs)[:-2], str(secs)[-2:])
+            
+    else:
+        tString = '%s:%s' % (mins, secs)
+    
+    return tString
+    
 
 ### -------------------------------------------------------------------------------------------------------------------------------
     

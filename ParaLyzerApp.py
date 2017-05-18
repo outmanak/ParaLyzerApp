@@ -87,7 +87,8 @@ class ParaLyzerApp(StatusBar):
                     'sts': 'Start',                 # and Stop Arduino, HF2 and tilter...
                     'wtc': 'Write Config',
                     'rtm': 'Reset',
-                    'stt': 'Start'                  # tilter
+                    'stt': 'Start',                 # tilter
+                    'rts': 'Read Config'            # update tilter setup in App
                 }
 
         self.lbl_txts = {
@@ -357,7 +358,7 @@ class ParaLyzerApp(StatusBar):
         self.CreateLabels     ( self.frms['till'], self.tilterKeys, fill=tk.X, pady=1, padx=5                                           )
         self.CreateUserEntries( self.frms['tile'], self.tilterKeys, self.tilterDefaults, anchor=tk.W, pady=2, width=6, justify=tk.RIGHT )
         
-        self.CreateButtons( self.lfrms['til'], ['wtc', 'rtm'], padx=5, fill=tk.X  )
+        self.CreateButtons( self.lfrms['til'], ['stt', 'wtc', 'rtm', 'rts'], padx=5, pady=2, fill=tk.X  )
         
         
         
@@ -1184,7 +1185,21 @@ class ParaLyzerApp(StatusBar):
         elif button == 'wac':
             
             self.UpdateELectrodePairs()
+            
                     
+                    
+        #####################
+        # START TILTER ONLY #
+        #####################
+        elif button == 'stt':
+            if self.btns['stt']['text'] == 'Start' and self.ckbtn_vals['utr'].get():
+                if self.paraLyzerCore.tilter.StartTilter():
+                    self.btns['stt'].configure(text='Stop')
+            elif self.btns['stt']['text'] == 'Stop' and self.ckbtn_vals['utr'].get():
+                if self.paraLyzerCore.tilter.StopTilter():
+                    self.btns['stt'].configure(text='Start')
+                
+                
                     
                     
         ##############################
@@ -1192,22 +1207,24 @@ class ParaLyzerApp(StatusBar):
         ##############################
         elif button == 'wtc':
             
-            # positive angle
-            self.paraLyzerCore.tilter.SetValue( 'posAngle' , self.entrs['pan'].get() )
-            # negative angle
-            self.paraLyzerCore.tilter.SetValue( 'negAngle' , self.entrs['nan'].get() )
-            # positive motion time
-            self.paraLyzerCore.tilter.SetValue( 'posMotion', self.entrs['pmo'].get() )
-            # negative motion time
-            self.paraLyzerCore.tilter.SetValue( 'negMotion', self.entrs['nmo'].get() )
-            # positive pause time mm:ss
-            self.paraLyzerCore.tilter.SetValue( 'posPause' , self.entrs['ppa'].get() )
-            # negative pause time mm:ss
-            self.paraLyzerCore.tilter.SetValue( 'negPause' , self.entrs['npa'].get() )
-            
-            if not self.paraLyzerCore.tilter.WriteSetup():
-                messagebox.showerror('Error', 'Could not write setup to tilter! Please check the connection...')
-                self.UpdateDetectionLabels()
+            if self.ckbtn_vals['utr'].get():
+                
+                # positive angle
+                self.paraLyzerCore.tilter.SetValue( 'posAngle' , self.entrs['pan'].get() )
+                # negative angle
+                self.paraLyzerCore.tilter.SetValue( 'negAngle' , self.entrs['nan'].get() )
+                # positive motion time
+                self.paraLyzerCore.tilter.SetValue( 'posMotion', self.entrs['pmo'].get() )
+                # negative motion time
+                self.paraLyzerCore.tilter.SetValue( 'negMotion', self.entrs['nmo'].get() )
+                # positive pause time mm:ss
+                self.paraLyzerCore.tilter.SetValue( 'posPause' , self.entrs['ppa'].get() )
+                # negative pause time mm:ss
+                self.paraLyzerCore.tilter.SetValue( 'negPause' , self.entrs['npa'].get() )
+                
+                if not self.paraLyzerCore.tilter.WriteSetup():
+                    messagebox.showerror('Error', 'Could not write setup to tilter! Please check the connection...')
+                    self.UpdateDetectionLabels()
         
         
                 
@@ -1216,11 +1233,46 @@ class ParaLyzerApp(StatusBar):
         #######################
         elif button == 'rtm':
             
-            if not self.paraLyzerCore.tilter.ResetTilterSetup():
-                messagebox.showerror('Error', 'Could not reset tilter setup! Please check the connection...')
-                self.UpdateDetectionLabels()
-            else:
-                self.ResetTilterEntries()
+            if self.ckbtn_vals['utr'].get():
+                
+                if not self.paraLyzerCore.tilter.ResetTilterSetup():
+                    messagebox.showerror('Error', 'Could not reset tilter setup! Please check the connection...')
+                    self.UpdateDetectionLabels()
+                else:
+                    self.ResetTilterEntries()
+            
+                    
+                    
+        ############################
+        # READ TILTER SETUP ON APP #
+        ############################
+        elif button == 'rts':
+            
+            if self.ckbtn_vals['utr'].get():
+                
+                params = self.paraLyzerCore.tilter.GetParameters()
+                
+                for key, val in params.items():
+                    if key == 'A+':
+                        key = 'pan'
+                    elif key == 'A-':
+                        key = 'nan'
+                    elif key == 'M+':
+                        key = 'pmo'
+                    elif key == 'M-':
+                        key = 'nmo'
+                    elif key == 'P+':
+                        key = 'ppa'
+                        val = coreUtils.GetStringFromMinSec(val)
+                    elif key == 'P-':
+                        key = 'npa'
+                        val = coreUtils.GetStringFromMinSec(val)
+                    
+                    try:
+                        self.entrs[key].delete( 0, tk.END )
+                        self.entrs[key].insert( 0, val    )
+                    except KeyError:
+                        pass
                 
                 
 ### -------------------------------------------------------------------------------------------------------------------------------
