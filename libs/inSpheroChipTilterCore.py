@@ -516,12 +516,13 @@ class inSpheroChipTilterCore(ComDevice):
         # to stop while loop for reading tilter stream
         self.stopReading = True
         
-        while self.comPort.isOpen():
-            sleep(1e-3)
+        if self.comPort:
+            while self.comPort.isOpen():
+                sleep(1e-3)
         
-        if self.inMessageThread:
-            # join concurrent and main thread
-            self.inMessageThread.join()
+            if self.inMessageThread:
+                # join concurrent and main thread
+                self.inMessageThread.join()
                 
                 
 ### -------------------------------------------------------------------------------------------------------------------------------
