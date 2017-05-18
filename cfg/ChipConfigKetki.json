@@ -1,0 +1,100 @@
+{
+	"chipImageName": "ChipKetki.png",
+	"chamberToPad": [{
+		"stimPadId": 29,
+		"recPadId": 28
+	}, {
+		"stimPadId": 27,
+		"recPadId": 26
+	}, {
+		"stimPadId": 25,
+		"recPadId": 24
+	}, {
+		"stimPadId": 23,
+		"recPadId": 22
+	}, {
+		"stimPadId": 21,
+		"recPadId": 20
+	}, {
+		"stimPadId": 19,
+		"recPadId": 18
+	}, {
+		"stimPadId": 17,
+		"recPadId": 16
+	}, {
+		"stimPadId": 15,
+		"recPadId": 14
+	}, {
+		"stimPadId": 13,
+		"recPadId": 12
+	}, {
+		"stimPadId": 11,
+		"recPadId": 10
+	}, {
+		"stimPadId": 9,
+		"recPadId": 8
+	}, {
+		"stimPadId": 7,
+		"recPadId": 6
+	}, {
+		"stimPadId": 5,
+		"recPadId": 4
+	}, {
+		"stimPadId": 3,
+		"recPadId": 2
+	}, {
+		"stimPadId": 1,
+		"recPadId": 0
+	}],
+	"recSiteScreenPosition": [{
+			"x": 425,
+			"y": 35
+		}, {
+			"x": 385,
+			"y": 35
+		}, {
+			"x": 370,
+			"y": 5
+		}, {
+			"x": 225,
+			"y": 35
+		}, {
+			"x": 184,
+			"y": 35
+		},
+
+		{
+			"x": 25,
+			"y": 35
+		}, {
+			"x": -10,
+			"y": 35
+		}, {
+			"x": -30,
+			"y": 5
+		}, {
+			"x": 0,
+			"y": 5
+		}, {
+			"x": 45,
+			"y": 5
+		},
+
+		{
+			"x": 170,
+			"y": 5
+		}, {
+			"x": 205,
+			"y": 5
+		}, {
+			"x": 245,
+			"y": 5
+		}, {
+			"x": 405,
+			"y": 5
+		}, {
+			"x": 445,
+			"y": 5
+		}
+	]
+}

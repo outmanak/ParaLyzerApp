@@ -1,0 +1,258 @@
+[
+  {
+    "padId": 29,
+    "padType": "stim"
+  },
+  {
+    "padId": 29,
+    "padType": "rec"
+  },
+  {
+    "padId": 28,
+    "padType": "stim"
+  },
+  {
+    "padId": 28,
+    "padType": "rec"
+  },
+  {
+    "padId": 27,
+    "padType": "stim"
+  },
+  {
+    "padId": 27,
+    "padType": "rec"
+  },
+  {
+    "padId": 26,
+    "padType": "stim"
+  },
+  {
+    "padId": 26,
+    "padType": "rec"
+  },
+  {
+    "padId": 25,
+    "padType": "stim"
+  },
+  {
+    "padId": 25,
+    "padType": "rec"
+  },
+  {
+    "padId": 24,
+    "padType": "stim"
+  },
+  {
+    "padId": 24,
+    "padType": "rec"
+  },
+  {
+    "padId": 23,
+    "padType": "stim"
+  },
+  {
+    "padId": 23,
+    "padType": "rec"
+  },
+  {
+    "padId": 22,
+    "padType": "stim"
+  },
+  {
+    "padId": 22,
+    "padType": "rec"
+  },
+  {
+    "padId": 21,
+    "padType": "stim"
+  },
+  {
+    "padId": 21,
+    "padType": "rec"
+  },
+  {
+    "padId": 20,
+    "padType": "stim"
+  },
+  {
+    "padId": 20,
+    "padType": "rec"
+  },
+  {
+    "padId": 19,
+    "padType": "stim"
+  },
+  {
+    "padId": 19,
+    "padType": "rec"
+  },
+  {
+    "padId": 18,
+    "padType": "stim"
+  },
+  {
+    "padId": 18,
+    "padType": "rec"
+  },
+  {
+    "padId": 17,
+    "padType": "stim"
+  },
+  {
+    "padId": 17,
+    "padType": "rec"
+  },
+  {
+    "padId": 16,
+    "padType": "stim"
+  },
+  {
+    "padId": 16,
+    "padType": "rec"
+  },
+  {
+    "padId": 15,
+    "padType": "stim"
+  },
+  {
+    "padId": 15,
+    "padType": "rec"
+  },
+  {
+    "padId": 14,
+    "padType": "stim"
+  },
+  {
+    "padId": 14,
+    "padType": "rec"
+  },
+  {
+    "padId": 13,
+    "padType": "stim"
+  },
+  {
+    "padId": 13,
+    "padType": "rec"
+  },
+  {
+    "padId": 12,
+    "padType": "stim"
+  },
+  {
+    "padId": 12,
+    "padType": "rec"
+  },
+  {
+    "padId": 11,
+    "padType": "stim"
+  },
+  {
+    "padId": 11,
+    "padType": "rec"
+  },
+  {
+    "padId": 10,
+    "padType": "stim"
+  },
+  {
+    "padId": 10,
+    "padType": "rec"
+  },
+  {
+    "padId": 9,
+    "padType": "stim"
+  },
+  {
+    "padId": 9,
+    "padType": "rec"
+  },
+  {
+    "padId": 8,
+    "padType": "stim"
+  },
+  {
+    "padId": 8,
+    "padType": "rec"
+  },
+  {
+    "padId": 7,
+    "padType": "stim"
+  },
+  {
+    "padId": 7,
+    "padType": "rec"
+  },
+  {
+    "padId": 6,
+    "padType": "stim"
+  },
+  {
+    "padId": 6,
+    "padType": "rec"
+  },
+  {
+    "padId": 5,
+    "padType": "stim"
+  },
+  {
+    "padId": 5,
+    "padType": "rec"
+  },
+  {
+    "padId": 4,
+    "padType": "stim"
+  },
+  {
+    "padId": 4,
+    "padType": "rec"
+  },
+  {
+    "padId": 3,
+    "padType": "stim"
+  },
+  {
+    "padId": 3,
+    "padType": "rec"
+  },
+  {
+    "padId": 2,
+    "padType": "stim"
+  },
+  {
+    "padId": 2,
+    "padType": "rec"
+  },
+  {
+    "padId": 1,
+    "padType": "stim"
+  },
+  {
+    "padId": 1,
+    "padType": "rec"
+  },
+  {
+    "padId": 0,
+    "padType": "stim"
+  },
+  {
+    "padId": 0,
+    "padType": "rec"
+  },
+  {
+    "padId": -1,
+    "padType": "stim"
+  },
+  {
+    "padId": -1,
+    "padType": "rec"
+  },
+  {
+    "padId": -2,
+    "padType": "stim"
+  },
+  {
+    "padId": -2,
+    "padType": "rec"
+  }
+]

@@ -1,0 +1,187 @@
+{
+	"chipImageName": "ChipSeb.png",
+	"chamberToPad": [{
+		"stimPadId": 5,
+		"recPadId": 6
+	}, {
+		"stimPadId": 5,
+		"recPadId": 4
+	},
+    
+    
+    {
+		"stimPadId": 3,
+		"recPadId": 4
+	}, {
+		"stimPadId": 3,
+		"recPadId": 2
+	},
+    
+    
+    {
+		"stimPadId": 1,
+		"recPadId": 2
+	}, {
+		"stimPadId": 1,
+		"recPadId": 0
+	},
+    
+    
+    {
+		"stimPadId": 9,
+		"recPadId": 0
+	}, {
+		"stimPadId": 9,
+		"recPadId": 8
+	},
+    
+    
+    {
+		"stimPadId": 7,
+		"recPadId": 8
+	}, {
+		"stimPadId": 7,
+		"recPadId": 6
+	}, 
+    
+    
+    {
+		"stimPadId": 15,
+		"recPadId": 16
+	}, {
+		"stimPadId": 15,
+		"recPadId": 14
+	},
+    
+    
+    {
+		"stimPadId": 13,
+		"recPadId": 14
+	}, {
+		"stimPadId": 13,
+		"recPadId": 12
+	},
+    
+    
+    {
+		"stimPadId": 11,
+		"recPadId": 12
+	}, {
+		"stimPadId": 11,
+		"recPadId": 10
+	},
+    
+    
+    {
+		"stimPadId": 19,
+		"recPadId": 10
+	}, {
+		"stimPadId": 19,
+		"recPadId": 18
+	},
+    
+    
+    {
+		"stimPadId": 17,
+		"recPadId": 18
+	}, {
+		"stimPadId": 17,
+		"recPadId": 16
+	}, 
+    
+    
+    {
+		"stimPadId": 25,
+		"recPadId": 26
+	}, {
+		"stimPadId": 25,
+		"recPadId": 24
+	},
+    
+    
+    {
+		"stimPadId": 23,
+		"recPadId": 24
+	}, {
+		"stimPadId": 23,
+		"recPadId": 22
+	},
+    
+    
+    {
+		"stimPadId": 21,
+		"recPadId": 22
+	}, {
+		"stimPadId": 21,
+		"recPadId": 20
+	},
+    
+    
+    {
+		"stimPadId": 29,
+		"recPadId": 20
+	}, {
+		"stimPadId": 29,
+		"recPadId": 28
+	},
+    
+    
+    {
+		"stimPadId": 27,
+		"recPadId": 28
+	}, {
+		"stimPadId": 27,
+		"recPadId": 26
+	}],
+	"recSiteScreenPosition": [{
+			"x": 0,
+			"y": 0
+		}, {
+			"x": 67,
+			"y": 0
+		}, {
+			"x": 134,
+			"y": 0
+		}, {
+			"x": 205,
+			"y": 0
+		}, {
+			"x": 275,
+			"y": 0
+		},
+
+		{
+			"x": 0,
+			"y": 50
+		}, {
+			"x": 67,
+			"y": 50
+		}, {
+			"x": 134,
+			"y": 50
+		}, {
+			"x": 205,
+			"y": 50
+		}, {
+			"x": 275,
+			"y": 50
+		},
+
+		{
+			"x": 0,
+			"y": 95
+		}, {
+			"x": 67,
+			"y": 95
+		}, {
+			"x": 134,
+			"y": 95
+		}, {
+			"x": 205,
+			"y": 95
+		}, {
+			"x": 275,
+			"y": 95
+		}
+	]
+}
