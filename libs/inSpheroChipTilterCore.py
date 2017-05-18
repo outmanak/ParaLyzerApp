@@ -68,6 +68,7 @@ class inSpheroChipTilterCore(ComDevice):
         
         # to stop while loop for reading tilter stream
         self.stopReading     = True
+        self.isReading       = False
         self.inMessageThread = None
         
         self.isTilting = False
@@ -271,6 +272,9 @@ class inSpheroChipTilterCore(ComDevice):
             # reset tilter state for new run
             self.tilterState = self.GetDefaultTilterState()
             
+            # everything should be fine here... so set TRUE
+            self.isReading = True
+            
             while not self.stopReading:
                 
                 # after splitting last entry in list is always emtpy, if character was in stream
@@ -286,6 +290,9 @@ class inSpheroChipTilterCore(ComDevice):
         
             # properly close port
             self.SaveCloseComPort()
+            
+            # parallel thread is about to end... so set FALSE
+            self.isReading = False
     
 ### -------------------------------------------------------------------------------------------------------------------------------
 
@@ -517,7 +524,7 @@ class inSpheroChipTilterCore(ComDevice):
         self.stopReading = True
         
         if self.comPort:
-            while self.comPort.isOpen():
+            while self.comPort.isOpen() or self.isReading:
                 sleep(1e-3)
         
             if self.inMessageThread:
