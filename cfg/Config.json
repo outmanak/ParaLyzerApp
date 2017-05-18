@@ -1,1 +1,1 @@
-{"stf": "./mat_files/", "cfg": "./cfg/Config.json", "stsf": "", "swc": "./cfg/SwitchConfig.json", "chc": "./cfg/ChipConfigSeb.json", "gui": {"dbg": true}}
+{"swc": "./cfg/SwitchConfig.json", "cfg": "./cfg/Config.json", "chc": "./cfg/ChipConfig.json", "gui": {"dbg": true}, "stsf": "", "stf": "./mat_files/"}
