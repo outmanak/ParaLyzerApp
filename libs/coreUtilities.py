@@ -246,7 +246,7 @@ def GetMinSecFromString(tString):
         try:
             secs = int(tString)
         except ValueError:
-            secs = 0
+            pass
         else:
             if secs > 59:
                 secs = secs-60
@@ -260,8 +260,7 @@ def GetMinSecFromString(tString):
             mins = int(tString[0])
             secs = int(tString[1])
         except ValueError:
-            mins = 0
-            secs = 0
+            pass
     
     return mins, secs
 

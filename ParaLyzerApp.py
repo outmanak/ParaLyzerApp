@@ -1193,17 +1193,17 @@ class ParaLyzerApp(StatusBar):
         elif button == 'wtc':
             
             # positive angle
-            self.paraLyzerCore.tilter.SetValue( 'posAngle', self.entrs['pan'].get() )
+            self.paraLyzerCore.tilter.SetValue( 'posAngle' , self.entrs['pan'].get() )
             # negative angle
-            self.paraLyzerCore.tilter.SetValue( 'negAngle', self.entrs['nan'].get() )
+            self.paraLyzerCore.tilter.SetValue( 'negAngle' , self.entrs['nan'].get() )
             # positive motion time
-            self.paraLyzerCore.tilter.SetValue( 'posMotSec', self.entrs['pmo'].get() )
+            self.paraLyzerCore.tilter.SetValue( 'posMotion', self.entrs['pmo'].get() )
             # negative motion time
-            self.paraLyzerCore.tilter.SetValue( 'negMotSec', self.entrs['nmo'].get() )
+            self.paraLyzerCore.tilter.SetValue( 'negMotion', self.entrs['nmo'].get() )
             # positive pause time mm:ss
-            self.paraLyzerCore.tilter.SetValue( 'posPauseRaw', self.entrs['ppa'].get() )
+            self.paraLyzerCore.tilter.SetValue( 'posPause' , self.entrs['ppa'].get() )
             # negative pause time mm:ss
-            self.paraLyzerCore.tilter.SetValue( 'negPauseRaw', self.entrs['npa'].get() )
+            self.paraLyzerCore.tilter.SetValue( 'negPause' , self.entrs['npa'].get() )
             
             if not self.paraLyzerCore.tilter.WriteSetup():
                 messagebox.showerror('Error', 'Could not write setup to tilter! Please check the connection...')
@@ -1216,8 +1216,8 @@ class ParaLyzerApp(StatusBar):
         #######################
         elif button == 'rtm':
             
-            if not self.paraLyzerCore.tilter.ResetTilterMemory():
-                messagebox.showerror('Error', 'Could not reset tilter memory! Please check the connection...')
+            if not self.paraLyzerCore.tilter.ResetTilterSetup():
+                messagebox.showerror('Error', 'Could not reset tilter setup! Please check the connection...')
                 self.UpdateDetectionLabels()
             else:
                 self.ResetTilterEntries()
