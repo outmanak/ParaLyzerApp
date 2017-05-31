@@ -6,7 +6,7 @@ Created on Tue May  9 18:44:04 2017
 """
 
 # size estimation stuff
-from sys import getsizeof, stderr
+from sys import getsizeof
 from itertools import chain
 from collections import deque
 
@@ -17,109 +17,16 @@ import textwrap
 import json
 from datetime import datetime
 
-_logger = None
-
-    
-### -------------------------------------------------------------------------------------------------------------------------------
-    
-def InitLogger(logFile='', caller='coreUtilities'):
-    
-    global _logger
-    
-    usePrompt = False
-    
-    # if _logger == None:
-    
-    # create logger with module name
-    _logger = log.getLogger(caller)
-    _logger.setLevel(log.DEBUG)
-    
-    # create formatter
-    formatter = log.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-    
-    # create file handler and set level to debug
-    # all messages higher in priority are written to file
-    if logFile != '':
-        
-        # create folder, if necessary
-        if not os.path.exists('./log/'):
-            try:
-                os.makedirs('./log/')
-            except OSError:
-                SafeLogger('error', 'Could not create folder for log file!\n...use Command prompt instead.')
-                usePrompt = True
-    
-        # folder should exist
-        # if something went wrong before it's still save to try
-        # two errors will be visible
-        if not IsAccessible('./log/' + logFile, 'write'):
-            # write file
-            # later on used by logger
-            # -> close immediately
-            try:
-                open('./log/' + logFile, 'wt').close()
-            except PermissionError:
-                SafeLogger('error', 'Could not create log file!\nCheck permission...')
-                usePrompt = True
-    else:
-        usePrompt = True
-    
-    # use command prompt in case something doesnt work with the files
-    if usePrompt:
-        ch = log.StreamHandler()
-        ch.setLevel(log.DEBUG)
-    else:
-        ch = log.FileHandler('./log/' + logFile)
-        ch.setLevel(log.DEBUG)
-        
-    # add formatter to ch
-    ch.setFormatter(formatter)
-    
-    # add ch to logger
-    _logger.addHandler(ch)
-    
-    return _logger
+#_logger = log.getLogger('coreUtilities')
 
 ### -------------------------------------------------------------------------------------------------------------------------------
 
-def TerminateLogger(caller='coreUtilities'):
-    
-    logger = log.getLogger(caller)
-        
-    for handler in logger.handlers:
-        handler.close()
-        logger.removeHandler(handler)
-            
-    del logger
-
-### -------------------------------------------------------------------------------------------------------------------------------
-
-def SafeLogger(level, msg):
-    
-    if _logger:
-        if level == 'debug':
-            _logger.debug(msg)
-        elif level == 'info':
-            _logger.info(msg)
-        elif level == 'warning':
-            _logger.warning(msg)
-        elif level == 'error':
-            _logger.error(msg)
-    else:
-        if level == 'debug':
-            print('DEBUG: %s' % msg)
-        elif level == 'info':
-            print('INFO: %s' % msg)
-        elif level == 'warning':
-            print('WARNING: %s' % msg)
-        elif level == 'error':
-            print('ERROR: %s' % msg)
-
-### -------------------------------------------------------------------------------------------------------------------------------
-
-def LoadJsonFile(fName):
+def LoadJsonFile(fName, caller='coreUtilities'):
     
     jsonStruct = {}
+
+    # get logger from module name
+    logger = log.getLogger(caller)
     
     if IsAccessible(fName):
         try:
@@ -127,32 +34,35 @@ def LoadJsonFile(fName):
             with open(fName, 'rt') as f:
                 jsonStruct = json.load(f)
         except PermissionError:
-            _logger.error('Could not access file: \'%s\'! Please check permissions...' % fName)
+            logger.error('Could not access file: \'%s\'! Please check permissions...' % fName)
         except FileNotFoundError:
-            _logger.error('Could not find file: \'%s\'!' % fName)
+            logger.error('Could not find file: \'%s\'!' % fName)
         except IOError:
-            _logger.error('Could not read file: \'%s\'!' % fName)
+            logger.error('Could not read file: \'%s\'!' % fName)
         except ValueError:
-            _logger.error('Could not encode JSON structure from file: \'%s\'!' % fName)
+            logger.error('Could not encode JSON structure from file: \'%s\'!' % fName)
     
     return jsonStruct
 
 ### -------------------------------------------------------------------------------------------------------------------------------
 
-def DumpJsonFile(jsonStruct, fName):
+def DumpJsonFile(jsonStruct, fName, caller='coreUtilities'):
     
     success = True
+
+    # get logger from module name
+    logger = log.getLogger(caller)
     
     try:
         # file is opened, read and automatically closed
         with open(fName, 'wt') as f:
             json.dump(jsonStruct, f)
     except PermissionError:
-        _logger.error('Could not access file: \'%s\'! Please check permissions...' % fName)
+        logger.error('Could not access file: \'%s\'! Please check permissions...' % fName)
         success = False
         raise
     except FileNotFoundError:
-        _logger.error('Could not find file: \'%s\'!' % fName)
+        logger.error('Could not find file: \'%s\'!' % fName)
         success = False
         raise
         
@@ -183,26 +93,32 @@ def GetFolderFromFilePath(p):
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
-def GetRelativePath(absPath):
+def GetRelativePath(absPath, caller='coreUtilities'):
+
+    # get logger from module name
+    logger = log.getLogger(caller)
     
     if os.path.isfile(absPath):
         try:
             relPath = './' + os.path.relpath(absPath).replace('\\', '/')
         except ValueError:
-            SafeLogger('error', 'Invalid path \'%s\'' % absPath)
+            logger.error('Invalid path \'%s\'' % absPath)
     else:
         try:
             relPath = './' + os.path.split(absPath)[-1] + '/'
         except TypeError:
-            SafeLogger('error', 'Invalid path \'%s\'' % absPath)
+            logger.error('Invalid path \'%s\'' % absPath)
         
     return relPath
     
 ### -------------------------------------------------------------------------------------------------------------------------------
     
-def SafeMakeDir(folder):
+def SafeMakeDir(folder, caller='coreUtilities'):
     
     success = True
+
+    # get logger from module name
+    logger = log.getLogger(caller)
     
     # in case user passed file instead of folder...
     if os.path.isfile(folder):
@@ -213,11 +129,11 @@ def SafeMakeDir(folder):
             os.makedirs(folder)
             
             # try logger, if initialized
-            SafeLogger('info', 'Created folder \'%s\'' % folder)
+            logger.info('Created folder \'%s\'' % folder)
                 
         except OSError:
             # try logger, if initialized
-            SafeLogger('error', 'Could not create folder \'%s\'!' % folder)
+            logger.error('Could not create folder \'%s\'!' % folder)
             
     return success
     
@@ -331,9 +247,6 @@ def GetTotalSize(o, handlers={}, verbose=False):
             return 0
         seen.add(id(o))
         s = getsizeof(o, default_size)
-
-        if verbose:
-            _logger.info(s, type(o), repr(o), file=stderr)
 
         for typ, handler in all_handlers.items():
             if isinstance(o, typ):

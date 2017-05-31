@@ -5,82 +5,66 @@ Created on Tue May  9 18:44:04 2017
 @author: Martin Leonhardt (martin.leonhardt87@gmail.com)
 """
 
+from time import sleep
 
-from libs import coreUtilities as coreUtils
-from libs.ComDevice import ComDevice
+# in case this guy is used somewhere else
+# we need different loading of modules
+try:
+    from libs.DeviceCore import DeviceCore
+except ImportError:
+    from DeviceCore import DeviceCore
 
-
-
-class ArduinoCore(ComDevice):
+try:
+    from libs import coreUtilities as coreUtils
+except ImportError:
+    import coreUtilities as coreUtils
     
+
+
+
+class ArduinoCore(DeviceCore):
+    
+    # serial port flags
+    _baudrate = 115200
+    _dtr      = False       # avoid pull-down of reset upon serial port opening
+    
+    # name for auto detection
     _usbName = 'Arduino Uno'
     
-    def __init__(self, selElCallback=None, **flags):
+    # message for detection
+    _detMsg = 'Try to detect Arduino Uno...'
+    
+    def __init__(self, ePairCallback=None, **flags):
         
-        self.selectElectrodePairsCallback = selElCallback
+        self.selectElectrodePairs = ePairCallback
+            
+        # setup com port
+        flags['baudrate'] = self._baudrate
+        flags['dtr']      = self._dtr
         
-        # check given parameters
-        if 'coreStartTime' in flags.keys():
-            self.coreStartTime = flags['coreStartTime']
-        else:
-            self.coreStartTime = coreUtils.GetDateTimeAsString()
-            
-            
-        
-        # initialize logger
-        if 'logger' in flags.keys():
-            self.logger  = flags['logger']
-        elif 'logToFile' in flags.keys():
-            if flags['logToFile']:
-                if 'logFile' in flags.keys():
-                    self.logFile = flags['logFile']
-                else:
-                    self.logFile = 'session_' + self.coreStartTime + '.log'
-                    
-                self.logger = coreUtils.InitLogger(self.logFile, __name__)
-            else:
-                self.logger = coreUtils.InitLogger(caller=__name__)
-        else:
-            self.logger  = coreUtils.InitLogger(caller=__name__)
-                
-
-
-            
-        # setup, if not already done
-        if 'comPort' in flags.keys():
-            self.comPort = flags['comPort']
-        else:
-            ComDevice.__init__(self, self._usbName, flags, 'Try to detect Arduino Uno...', self.logger)
+        DeviceCore.__init__(self, **flags)
 
 
             
         # use given chipConfig file or use default one
-        if 'chipConfigFile' in flags.keys():
-            self.chipConfigFile = flags['chipConfigFile']
-        else:
-            self.chipConfigFile = './ChipConfig.json'
-
-
-            
+        self._chipConfigFile   = flags.get( 'chipConfigFile', './cfg/ChipConfig.json'     )
+        
         # use given switchConfig file or use default one
-        if 'switchConfigFile' in flags.keys():
-            self.switchConfigFile = flags['switchConfigFile']
-        else:
-            self.switchConfigFile = './switchConfig.json'
+        self._switchConfigFile = flags.get( 'switchConfigFile', './cfg/SwitchConfig.json' )
         
         # contains chamber-electrode connections, counting from 0 to 29
         # each two are one chamber with two different electrode pairs for counting and measuring viability
         # so 60 entries are in this file
-        self.UpdateConfig( 'chc', self.chipConfigFile )
+        self.UpdateConfig( 'chc', self._chipConfigFile )
         
         # contains switch-electrode assignment, counting from -2 to 29
         # 64 switches are availble in total, for flexibility 32 can be used in both directions (stim+rec)
         # two of them are used for debugging on current PCB (v4.0 Ketki) ... -2,-1 are not accessible as array index
         # the order is related to the IC on the PCB, starting with 0 from the connector (Sebastian counted the pad IDs descending from 29 in the same direction)
-        self.UpdateConfig( 'swc', self.switchConfigFile )
+        self.UpdateConfig( 'swc', self._switchConfigFile )
         
         # define empty electrode pair dictionary
-        self.activeElectrodes = {
+        self._activeElectrodes = {
         # this dictionary contains several standard structures depending on the chamber that was selected
 #                'ID': {
 #                     'ePair': -1,
@@ -88,16 +72,13 @@ class ArduinoCore(ComDevice):
 #                }
             }
             
-        self.debugMode          = False
+        self._debugMode = False
 
 ### -------------------------------------------------------------------------------------------------------------------------------
 
     def __del__(self):
         
-        ComDevice.__del__(self, __name__)
-        
-        # close logger handle
-        coreUtils.TerminateLogger(__name__)
+        DeviceCore.__del__(self)
         
         
             
@@ -111,7 +92,7 @@ class ArduinoCore(ComDevice):
         success = True
         
         if key == 'chc':
-            self.chipConfig = coreUtils.LoadJsonFile( fName )
+            self.chipConfig = coreUtils.LoadJsonFile( fName, __name__ )
             
             if self.chipConfig != {}:
                 self.chipConfigStatus = True
@@ -120,7 +101,7 @@ class ArduinoCore(ComDevice):
                 success = False
                 
         elif key == 'swc':
-            self.switchConfig = coreUtils.LoadJsonFile( fName )
+            self.switchConfig = coreUtils.LoadJsonFile( fName, __name__ )
             
             if self.switchConfig != {}:
                 self.switchConfigStatus = True
@@ -151,9 +132,9 @@ class ArduinoCore(ComDevice):
             success = self.SaveWriteToComPort(msg.encode('latin-1'), leaveOpen=True)
             
             if success:
-                if self.debugMode:
+                if self._debugMode:
                     
-                    inMsg = self.SaveReadFromComPort('waiting', waitFor=1, bePatient=25, decode=True).replace('\n', ', ')
+                    inMsg = self.SaveReadFromComPort(mode='waiting', waitFor=1, bePatient=25, decode=True).replace('\n', ', ')
                     
                     self.logger.debug('Received message from Arduino: %s' % inMsg)
                         
@@ -162,7 +143,10 @@ class ArduinoCore(ComDevice):
 ### -------------------------------------------------------------------------------------------------------------------------------
     
     def GetActiveSwitchIndices(self, activeElectrodePair):
-        'gets the switch indices which are to be activated when the indicated chamber is active'
+        '''gets the switch indices which are to be activated when the indicated chamber is active'''
+        
+        # init return value
+        switchesToActivate = []
         
         if isinstance(activeElectrodePair, str):
             
@@ -171,24 +155,45 @@ class ArduinoCore(ComDevice):
             elif 'short' in activeElectrodePair:
                 switchesToActivate = [60, 61]
         else:
-            switchesToActivate = []
-            pads = self.chipConfig['chamberToPad'][activeElectrodePair]
+            # find corresponding electrode pair in chip config file
+            padIdx = 0
+            while padIdx < len(self.chipConfig['chamberToPad']):
+                # get next pad setup
+                pads = self.chipConfig['chamberToPad'][padIdx]
+                # stop loop when correct electrode pair setup was found
+                # use pads in subsequent code
+                if pads['ePairId'] == activeElectrodePair:
+                    break
+                else:
+                    padIdx += 1
+                
+            # in case loop left withput any results
+            # e.g. an old file setup was used
+            # just use the given variable as index
+            if padIdx == len(self.chipConfig['chamberToPad']):
+                pads = self.chipConfig['chamberToPad'][activeElectrodePair]
             
             self.logger.debug('pads: %s' % pads)
             
+            # get switch index to close connection to stimulation/recording pad
             for switchId in range(len(self.switchConfig)):
                 if (self.switchConfig[switchId]['padId'] == pads['stimPadId'] and self.switchConfig[switchId]['padType'] == 'stim'):
                     switchesToActivate.append(switchId)
                 if (self.switchConfig[switchId]['padId'] == pads['recPadId']  and self.switchConfig[switchId]['padType'] == 'rec'):
                     switchesToActivate.append(switchId)
                     
+        # make sure Arduino receives sorted list
+        # otherwise daisy chaining might not work
+        switchesToActivate.sort()
+                    
         return switchesToActivate
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
-    def GenerateSendStream(self, activeElectrodePair, residenceTime):
-        'converts chosen chamber and electrode pair to bytes for sending via serial interface'
-        'NOTE: all switches are updated at once (8 bytes + 1 byte for chamber and electrode encoding)'
+    def GenerateSendStream(self, activeElectrodePair, residenceTime=0):
+        '''converts chosen chamber and electrode pair to bytes for sending via serial interface
+           NOTE: all switches are updated at once (8 bytes + 1 byte for chamber and electrode encoding)
+        '''
         
         sendBytes = bytes()
         
@@ -237,11 +242,7 @@ class ArduinoCore(ComDevice):
         
         # check debug flag
         # it's also possible to set self.debugMode directly
-        if 'dbg' in flags:
-            if flags['dbg']:
-                self.debugMode = True
-            else:
-                self.debugMode = False
+        self.debugMode = flags.get('dbg', False)
         
         # empty stream
         sendStream = []
@@ -302,6 +303,16 @@ class ArduinoCore(ComDevice):
     
     def Stop(self):
         return self.SendMessage('stop')
+        
+### -------------------------------------------------------------------------------------------------------------------------------
+    
+    def EnableDebug(self):
+        self._debugMode = True
+        
+### -------------------------------------------------------------------------------------------------------------------------------
+    
+    def DisableDebug(self):
+        self._debugMode = False
             
 ### -------------------------------------------------------------------------------------------------------------------------------
     
@@ -333,8 +344,8 @@ class ArduinoCore(ComDevice):
         ePairs = []
         
         # use callback to select electrode pairs
-        if self.selectElectrodePairsCallback:
-            ePairs = self.selectElectrodePairsCallback(self.activeElectrodes, **flags)
+        if self.selectElectrodePairs:
+            ePairs = self.selectElectrodePairs(self.activeElectrodes, **flags)
             
         # otherwise just sort the list in ascending fashion
         else:
@@ -350,3 +361,41 @@ class ArduinoCore(ComDevice):
                 'ePair': -1,
                 'int'  : -1
             }
+            
+            
+            
+            
+###############################################################################
+###############################################################################
+###                     --- DEBUG CODE HERE ---                             ###
+###############################################################################
+###############################################################################
+
+if __name__ == '__main__':
+    
+    # create Arduino instance
+    arduino = ArduinoCore()
+    
+    # enable debug mode here to catch incoming messages
+    arduino._debugMode = True
+    
+    # execute blinking test to check the connection and proper running of Arduino code
+    arduino.SendMessage('test')
+    
+    # test might take a while...so better sleep
+    sleep(4)
+    
+    # print all available commands
+    arduino.SendMessage('help')
+    
+    # enable debug mode for Arduino
+    arduino.SendMessage('debug 1')
+    
+    # generate debug stream and send command
+    arduino.SendMessage( 'setelectrodes 1 %s' % arduino.GenerateSendStream('short') )
+    
+    # generate byte stream to select first electrode pair
+    arduino.SendMessage( 'setelectrodes 1 %s' % arduino.GenerateSendStream(0)       )
+    
+    # disable debug mode for Arduino
+    arduino.SendMessage('debug 0')

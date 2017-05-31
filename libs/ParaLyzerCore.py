@@ -11,8 +11,13 @@ from libs.ArduinoCore import ArduinoCore
 from libs.ziHf2Core import ziHf2Core
 from libs.inSpheroChipTilterCore import inSpheroChipTilterCore
 
+try:
+    from libs.Logger import Logger
+except ImportError:
+    from Logger import Logger
 
-class ParaLyzerCore:
+
+class ParaLyzerCore(Logger):
         
     _fileKeys = ['cfg', 'swc', 'chc', 'stf', 'log', 'lfl']
     _detKeys  = ['hf2', 'ard', 'cam', 'til']
@@ -21,28 +26,9 @@ class ParaLyzerCore:
     
     def __init__(self, **flags):
         
+        logFile = flags.get('logFile')
         
-        # use given core start time or create new one
-        if 'coreStartTime' in flags.keys():
-            self.coreStartTime = flags['coreStartTime']
-        else:
-            self.coreStartTime = coreUtils.GetDateTimeAsString()
-            
-            
-        
-        # initialize logger
-        if 'logger' in flags.keys():
-            self.logger  = flags['logger']
-        elif 'logToFile' in flags.keys():
-            if flags['logToFile']:
-                if 'logFile' in flags.keys():
-                    self.logFile = flags['logFile']
-                else:
-                    self.logFile = 'session_' + self.coreStartTime + '.log'
-                    
-                self.logger = coreUtils.InitLogger(self.logFile, __name__)
-            else:
-                self.logger = coreUtils.InitLogger(caller=__name__)
+        Logger.__init__(self, logFile)
                 
         
         
@@ -74,11 +60,6 @@ class ParaLyzerCore:
         # otherwise read config and update stdConfig and cfgStatus
         self.CreateDefaultStructure()
         
-        flags = {
-            'coreStartTime': self.coreStartTime,
-            'logToFile'    : True
-        }
-        
         # file flags for calling Arduino constructor
         # if files are not accesible, then pass empty dictionary - Arduino tries to use default ones
         files = {}
@@ -89,9 +70,9 @@ class ParaLyzerCore:
         
         
         # initialize devices
-        self.arduino = ArduinoCore           ( self.SetupArduino,     **flags, **files, baudrate=115200, dtr=False )   # higher baudrate and avoid reset when opening serial port
-        self.hf2     = ziHf2Core             ( self.stdConfig['stf'], **flags                                      )
-        self.tilter  = inSpheroChipTilterCore( **flags                                                             )
+        self.arduino = ArduinoCore           ( self.SetupArduino,     **flags, **files )
+        self.hf2     = ziHf2Core             ( self.stdConfig['stf'], **flags          )
+        self.tilter  = inSpheroChipTilterCore(                        **flags          )
         self.camera  = None
         
 ### -------------------------------------------------------------------------------------------------------------------------------
@@ -100,6 +81,8 @@ class ParaLyzerCore:
         self.arduino.__del__()
         self.hf2.__del__()
         self.tilter.__del__()
+        
+        Logger.__del__(self)
         
         
                 
@@ -112,17 +95,13 @@ class ParaLyzerCore:
         success = True
         
         if key == 'ard':
-            
-            flags = {'baudrate': 115200, 'dtr':False}
-            success = self.arduino.DetectDeviceAndSetupPort(self.arduino._usbName, flags, 'Try to detect Arduino Uno...')
+            success = self.arduino.DetectDeviceAndSetupPort()
             
         elif key == 'hf2':
-            
             success = self.hf2.DetectDeviceAndSetupPort()
             
         elif key == 'til':
-            
-            success = self.tilter.DetectDeviceAndSetupPort(self.tilter._usbName, {}, 'Try to detect inSphero tilter...')
+            self.tilter.DetectDeviceAndSetupPort()
             
         return success
         
@@ -193,8 +172,10 @@ class ParaLyzerCore:
         startRightAway = True
         
         # mandatory for starting measurement
-        if not flags['ard'] or not flags['hf2']:
-            success = {'ard': False, 'hf2': False}
+        if not flags['ard']:
+            success = {'ard': False}
+        elif not flags['hf2']:
+            success = {'hf2': False}
         else:
             # check if tilter is connected
             if flags['til'] and flags['utr']:

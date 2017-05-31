@@ -13,10 +13,10 @@ import scipy as sp
 from time import sleep, time, perf_counter
 
 from libs import coreUtilities as coreUtils
-from libs.ComDevice import ComDevice
+from libs.DeviceCore import DeviceCore
 
 
-class ziHf2Core(ComDevice):
+class ziHf2Core(DeviceCore):
     
     _deviceId       = ['dev10', 'dev275']
     _deviceApiLevel = 1
@@ -30,22 +30,29 @@ class ziHf2Core(ComDevice):
     
     def __init__(self, baseStreamFolder='./mat_files', **flags):
         
+        # store chosen device name here
+        self.deviceName = None
+        
         # dictionary to store all demodulator results
-        self.demods = {}
+        self._demods = {}
         
         # to stop measurement
         # initially no measurement is running
-        self.stopMeas   = True
-        self.pollThread = None
+        self._poll       = False
+        self._pollThread = None
+        # create locker to savely run parallel threads
+        self._pollLocker = threading.Lock()
+        
+        # not know so far, cause no device is connected
+        self.recordingDevices = ''
+        
+        self.recordString = 'Stopped.'
         
         # flags if somethign during recording went wrong
         self.recordFlags = {
-                    'dataloss':         False,
+                    'dataloss'        : False,
                     'invalidtimestamp': False
                 }
-        
-        # create locker to savely run parallel threads
-        self.pollLocker = threading.Lock()
         
         # variables to count streams (folder + files)
         self.baseStreamFolder = baseStreamFolder
@@ -53,64 +60,24 @@ class ziHf2Core(ComDevice):
         self.strmFlCnt        = 0
         self.strmFldrCnt      = 0
         
-        # not know so far, cause no device is connected
-        self.recordingDevices = ''
+        flags['detCallback'] = self.DetectDeviceAndSetupPort
         
-        self.recordString = 'Stopped.'
-        
-        
-        
-        
-        # check given parameters
-        if 'coreStartTime' in flags.keys():
-            self.coreStartTime = flags['coreStartTime']
-        else:
-            self.coreStartTime = coreUtils.GetDateTimeAsString()
-            
-            
-        
-        # initialize logger
-        if 'logger' in flags.keys():
-            self.logger  = flags['logger']
-        elif 'logToFile' in flags.keys():
-            if flags['logToFile']:
-                if 'logFile' in flags.keys():
-                    self.logFile = flags['logFile']
-                else:
-                    self.logFile = 'session_' + self.coreStartTime + '.log'
-                    
-                self.logger = coreUtils.InitLogger(self.logFile, __name__)
-            else:
-                self.logger = coreUtils.InitLogger(caller=__name__)
-        else:
-            self.logger  = coreUtils.InitLogger(caller=__name__)
-
-
-            
-        # setup, if not already done
-        if 'comPort' in flags.keys():
-            self.comPort = flags['comPort']
-        else:
-            # first initialize com port class
-            ComDevice.__init__(self)
-            # then go for the device with overwritten DetectDeviceAndSetupPort()
-            self.DetectDeviceAndSetupPort()
+        DeviceCore.__init__(self, **flags)
     
 ### -------------------------------------------------------------------------------------------------------------------------------
         
     def __del__(self):
         
-        self.stopMeas = True
+#        self.stopMeas = True
+#        
+#        sleep(50e-3)
+#        
+#        if self.pollThread:
+#            self.pollThread.join()
+
+        self.StopPoll()
         
-        sleep(50e-3)
-        
-        if self.pollThread:
-            self.pollThread.join()
-        
-        ComDevice.__del__(self, __name__)
-        
-        # close logger handle
-        coreUtils.TerminateLogger(__name__)
+        DeviceCore.__del__(self)
         
     
 ### -------------------------------------------------------------------------------------------------------------------------------
@@ -128,11 +95,13 @@ class ziHf2Core(ComDevice):
             else:
                 self.logger.info('Created API session for \'%s\' on \'%s:%s\' with api level \'%s\'' % (device, props['serveraddress'], props['serverport'], props['apilevel']))
                 
+                self.deviceName       = device
                 self.comPort          = daq
                 self.comPortStatus    = props['available']
                 self.comPortInfo      = ['', '%s on %s:%s' % (device.capitalize(), props['serveraddress'], props['serverport'])]
                 self.recordingDevices = '/' + device + self._recordingDevices
                 
+                # no need to search further
                 break
                 
         return self.comPortStatus
@@ -171,7 +140,7 @@ class ziHf2Core(ComDevice):
             # initialize new thread
             self.pollThread = threading.Thread(target=self.PollDataFromHF2)
             # once polling thread is started loop is running till StopPoll() was called
-            self.stopMeas = False
+            self._poll = True
             # start parallel thread
             self.pollThread.start()
             
@@ -183,8 +152,8 @@ class ziHf2Core(ComDevice):
     
     def StopPoll(self, **flags):
         
-        if not self.stopMeas:
-            self.stopMeas = True
+        if self._poll:
+            self._poll = True
             # end poll thread
             self.pollThread.join()
             
@@ -205,12 +174,12 @@ class ziHf2Core(ComDevice):
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
-    def IsRecording(self):
-        return not self.stopMeas
+    def IsPolling(self):
+        return self._poll
         
 ### -------------------------------------------------------------------------------------------------------------------------------
 
-    def PollDataFromHF2(self):
+    def _PollData(self):
         
         # for lag measurement
         idx   = 0
@@ -232,7 +201,7 @@ class ziHf2Core(ComDevice):
             # clear old data from polling buffer
             self.comPort.sync()
             
-            while not self.stopMeas:
+            while self._poll:
                 
                 # lock thread to savely process
                 self.pollLocker.acquire()
@@ -313,7 +282,7 @@ class ziHf2Core(ComDevice):
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
-    def GetStandardRecordStructure(self):
+    def _GetStandardRecordStructure(self):
         return {
                     'x':         sp.array([]),
                     'y':         sp.array([]),
@@ -337,7 +306,7 @@ class ziHf2Core(ComDevice):
     
 ### -------------------------------------------------------------------------------------------------------------------------------
     
-    def WriteMatFileToDisk(self):
+    def _WriteMatFileToDisk(self):
         
         # create this just for debugging...
         outFileBuf = {'demods': []}
@@ -348,9 +317,10 @@ class ziHf2Core(ComDevice):
                 buf[k] = self.demods[key][k]
             outFileBuf['demods'].append(buf)
             
-        dev = self.recordingDevices.split('/')[1]
-            
-        sp.io.savemat(self.streamFolder+'stream_%05d.mat'%self.strmFlCnt, {'%s'%dev: outFileBuf})
+        sp.io.savemat(self.streamFolder+'stream_%05d.mat'%self.strmFlCnt, {'%s'%self.deviceName: outFileBuf})
+        
+        # memory leak was found...try to fix it
+        del self.demods
         
         # clear buffer for next recording
         self.demods = {}

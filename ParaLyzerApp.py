@@ -17,6 +17,7 @@ from datetime import datetime
 import re
 
 from libs.StatusBar import StatusBar
+from libs.Logger import Logger
 import libs.coreUtilities as coreUtils
 #import libs.guiUtilities as guiUtils
 from libs.ParaLyzerCore import ParaLyzerCore
@@ -24,8 +25,12 @@ from libs.ParaLyzerCore import ParaLyzerCore
 
                 
 
-class ParaLyzerApp(StatusBar):
+class ParaLyzerApp(Logger, StatusBar):
 
+    # NOTE: if you add a label AND it will be changed during program execution you need to enter it twice
+    # here for initial settings
+    # and in lbl_txts again
+    # ... this dictionary is not supposed to change during execution
     _lbl_txts = {
             'hf2': 'No HF2LI detected!',
             'ard': 'No Arduino detected!',
@@ -51,9 +56,13 @@ class ParaLyzerApp(StatusBar):
         # create general face of the app
         
         # store core start time...for creating folders and files
-        self.appStartTime = coreUtils.GetDateTimeAsString()
-        self.logFile       = 'session_' + self.appStartTime + '.log'
-        self.logger        = coreUtils.InitLogger(self.logFile, 'ParaLyzerApp')
+        self._appStartTime = coreUtils.GetDateTimeAsString()
+        self._logFile      = 'session_' + self._appStartTime + '.log'
+        
+        # init logger
+        Logger.__init__(self, self._logFile)
+        
+        self.logger.info('Starting program...')
         
         self.master = master
         
@@ -77,7 +86,7 @@ class ParaLyzerApp(StatusBar):
         self.btn_txts = {
                     'hf2': 'Detect HF2LI',
                     'ard': 'Detect Arduino',
-#                    'cam': 'Detect Camera',
+                    'cam': 'Detect Camera',
                     'til': 'Detect Tilter',
                     'chc': 'Chip Config',
                     'swc': 'Switch Config',
@@ -121,6 +130,7 @@ class ParaLyzerApp(StatusBar):
                     'dbg': 'Enable debug',
                     'enn': 'Enable notifier',
                     'utr': 'Use tilter',
+                    'sac': 'Select all',
                     'ofa': 'One for all',
                     'scv': 'Same cnt + via',
                     'swt': 'Sync with tilter',
@@ -166,7 +176,8 @@ class ParaLyzerApp(StatusBar):
                 
         
         # create core class object
-        self.paraLyzerCore = ParaLyzerCore(coreStartTime=self.appStartTime, logToFile=True)
+        # by passing logFile logToFile is automatically true
+        self.paraLyzerCore = ParaLyzerCore(coreStartTime=self._appStartTime, logFile=self._logFile)
         
         
         
@@ -296,6 +307,8 @@ class ParaLyzerApp(StatusBar):
         self.CreateLabel      ( ofa_via_frm  , 'via'   , side=tk.LEFT                                          )
         self.CreateUserEntry  ( ofa_via_frm  , 'viaofa', width=6, padx=10, justify=tk.RIGHT, state=tk.DISABLED )
         
+        self.CreateCheckButton( ofa_frm, 'sac', anchor=tk.W )
+        
         # same for count and viablity
         scv_swt_frm = tk.Frame(ofa_scv_swt_frm)
         scv_swt_frm.pack(anchor=tk.N)
@@ -387,7 +400,7 @@ class ParaLyzerApp(StatusBar):
         
         
         
-        StatusBar.__init__(self, master, 'Current stream folder: ', 'Run time: ', 'Status: ')
+        StatusBar.__init__(self, master, 'Current streaming folder: ', 'Run time: ', 'Status: ')
         self.UpdateStatusBar(self.lbl_txts['stf'], '0:00:00', self.paraLyzerCore.hf2.GetRecordingString() )
         
         
@@ -438,17 +451,17 @@ class ParaLyzerApp(StatusBar):
         # remove certain items to not cause problems with pack
         kwargs, args = self.PopObjectArgs(**kwargs)
         
-        self.lbls[key] = tk.Label( master, text=self.lbl_txts[key], **args )
+        self.lbls[key] = tk.Label( master, text=self._lbl_txts[key], **args )
         self.lbls[key].pack(**kwargs)
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
     def CreateLabels(self, master, keys, **kwargs):
         for key in keys:
-            if key in self.lbl_txts.keys():
+            if key in self._lbl_txts.keys():
                 self.CreateLabel(master, key, **kwargs)
             else:
-                raise Exception('%s not in self.lbl_txts' % key)
+                raise Exception('%s not in self._lbl_txts' % key)
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
@@ -1078,7 +1091,7 @@ class ParaLyzerApp(StatusBar):
         elif 'hf2' in error.keys():
             messagebox.showerror('HF2LI error!', 'Could not connect to HF2LI. Recording aborted!')
         elif 'til' in error.keys():
-            messagebox.showerror('Arduino error!', 'Could not connect to inSphero tilter. Recording aborted!')
+            messagebox.showerror('Tilter error!', 'Could not connect to inSphero tilter. Recording aborted!')
         else:
             messagebox.showerror('Unknown error!', 'Unknown error. Recording aborted!')
             
@@ -1093,7 +1106,7 @@ class ParaLyzerApp(StatusBar):
 ### -------------------------------------------------------------------------------------------------------------------------------
     
     def onButtonClick(self, button):
-        self.logger.info('Clicked button: %s' % button)
+        self.logger.debug('Clicked button: %s' % button)
         
         
         #####################
@@ -1233,7 +1246,7 @@ class ParaLyzerApp(StatusBar):
         #######################
         elif button == 'rtm':
             
-            if self.ckbtn_vals['utr'].get():
+            if self.ckbtns['utr'].get():
                 
                 if not self.paraLyzerCore.tilter.ResetTilterSetup():
                     messagebox.showerror('Error', 'Could not reset tilter setup! Please check the connection...')
@@ -1283,8 +1296,6 @@ class ParaLyzerApp(StatusBar):
         # change state in config structure
 #        self.paraLyzerCore.SetGuiFlag(key, state)
         
-        # enable or disable entries according to all check boxes and radio buttons
-        self.UpdateEntryStates()
         
         # enable/disable debug
         # OR enable/disable one interval for both counting and viability
@@ -1328,11 +1339,38 @@ class ParaLyzerApp(StatusBar):
                             break
                 if reset:
                     self.somethingsSelected = False
+                    
+        elif key == 'sac':
+            
+            # inform start button procedure that there was a change
+            self.ePairsChanged = True
+            
+            # toggle all chamber check buttons
+            for key in self.ckbtns.keys():
+                if 'id' in key:
+                    if state:
+                        self.ckbtns[key].select()
+                    else:
+                        self.ckbtns[key].deselect()
+                    
+            if state:
+                # from here we are sure that something was selected
+                # if it's valid we don't know yet - to be checked in UpdateELectrodePairs
+                # to call SetupArduino() later...
+                self.somethingsSelected = True
+            else:
+                self.somethingsSelected = False
+                
+                
+                    
+                    
+        # enable or disable entries according to all check boxes and radio buttons
+        self.UpdateEntryStates()
                 
 ### -------------------------------------------------------------------------------------------------------------------------------
     
     def onRadioClick(self, selected):
-        self.logger.info('Clicked radiobutton \'%s\'' % selected)
+        self.logger.debug('Clicked radiobutton \'%s\'' % selected)
         
         # enable or disable entries according to all check boxes and radio buttons
         self.UpdateEntryStates()
@@ -1357,7 +1395,7 @@ class ParaLyzerApp(StatusBar):
 ### -------------------------------------------------------------------------------------------------------------------------------
     
     def onComboChange(self, key, var):
-        self.logger.info('Combo box \'%s\' was changed to \'%s\'' % (key, var.get()))
+        self.logger.debug('Combo box \'%s\' was changed to \'%s\'' % (key, var.get()))
         
         self.UpdateEntryTimeBase(var)
         
@@ -1390,12 +1428,11 @@ class ParaLyzerApp(StatusBar):
                 
             # write gui flags
 #            self.paraLyzerCore.UpdateConfigFile()
-        
-            # close logger handle
-            coreUtils.TerminateLogger(__name__)
             
             # call shut down function to clean up open handles
             self.paraLyzerCore.__del__()
+            
+            Logger.__del__(self)
             
             # close GUI
             self.master.destroy()

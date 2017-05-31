@@ -1,135 +1,165 @@
 {
 	"chipImageName": "ChipSeb.png",
 	"chamberToPad": [{
+        "ePairId": 0,
 		"stimPadId": 5,
 		"recPadId": 6
 	}, {
+        "ePairId": 1,
 		"stimPadId": 5,
 		"recPadId": 4
 	},
     
     
     {
+        "ePairId": 2,
 		"stimPadId": 3,
 		"recPadId": 4
 	}, {
+        "ePairId": 3,
 		"stimPadId": 3,
 		"recPadId": 2
 	},
     
     
     {
+        "ePairId": 4,
 		"stimPadId": 1,
 		"recPadId": 2
 	}, {
+        "ePairId": 5,
 		"stimPadId": 1,
 		"recPadId": 0
 	},
     
     
     {
+        "ePairId": 6,
 		"stimPadId": 9,
 		"recPadId": 0
 	}, {
+        "ePairId": 7,
 		"stimPadId": 9,
 		"recPadId": 8
 	},
     
     
     {
+        "ePairId": 8,
 		"stimPadId": 7,
 		"recPadId": 8
 	}, {
+        "ePairId": 9,
 		"stimPadId": 7,
 		"recPadId": 6
 	}, 
     
     
     {
+        "ePairId": 10,
 		"stimPadId": 15,
 		"recPadId": 16
 	}, {
+        "ePairId": 11,
 		"stimPadId": 15,
 		"recPadId": 14
 	},
     
     
     {
+        "ePairId": 12,
 		"stimPadId": 13,
 		"recPadId": 14
 	}, {
+        "ePairId": 13,
 		"stimPadId": 13,
 		"recPadId": 12
 	},
     
     
     {
+        "ePairId": 14,
 		"stimPadId": 11,
 		"recPadId": 12
 	}, {
+        "ePairId": 15,
 		"stimPadId": 11,
 		"recPadId": 10
 	},
     
     
     {
+        "ePairId": 16,
 		"stimPadId": 19,
 		"recPadId": 10
 	}, {
+        "ePairId": 17,
 		"stimPadId": 19,
 		"recPadId": 18
 	},
     
     
     {
+        "ePairId": 18,
 		"stimPadId": 17,
 		"recPadId": 18
 	}, {
+        "ePairId": 19,
 		"stimPadId": 17,
 		"recPadId": 16
 	}, 
     
     
     {
+        "ePairId": 20,
 		"stimPadId": 25,
 		"recPadId": 26
 	}, {
+        "ePairId": 21,
 		"stimPadId": 25,
 		"recPadId": 24
 	},
     
     
     {
+        "ePairId": 22,
 		"stimPadId": 23,
 		"recPadId": 24
 	}, {
+        "ePairId": 23,
 		"stimPadId": 23,
 		"recPadId": 22
 	},
     
     
     {
+        "ePairId": 24,
 		"stimPadId": 21,
 		"recPadId": 22
 	}, {
+        "ePairId": 25,
 		"stimPadId": 21,
 		"recPadId": 20
 	},
     
     
     {
+        "ePairId": 26,
 		"stimPadId": 29,
 		"recPadId": 20
 	}, {
+        "ePairId": 27,
 		"stimPadId": 29,
 		"recPadId": 28
 	},
     
     
     {
+        "ePairId": 28,
 		"stimPadId": 27,
 		"recPadId": 28
 	}, {
+        "ePairId": 29,
 		"stimPadId": 27,
 		"recPadId": 26
 	}],

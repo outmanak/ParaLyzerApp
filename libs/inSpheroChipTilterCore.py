@@ -10,12 +10,12 @@ import threading
 from time import sleep
 
 import libs.coreUtilities as coreUtils
-from libs.ComDevice import ComDevice
+from libs.DeviceCore import DeviceCore
 
 
 
 
-class inSpheroChipTilterCore(ComDevice):
+class inSpheroChipTilterCore(DeviceCore):
 
     # HEX addresses for certain commands
     # for check sum calculation address needs to be stored as two individual bytes
@@ -59,6 +59,9 @@ class inSpheroChipTilterCore(ComDevice):
     # titler can be auto detected through this string
     _usbName = 'USB Serial Port'
     
+    # message for detection
+    _detMsg = 'Try to detect inSphero chip tilter...'
+    
     # define number for force writing
     _numForces = 3
     
@@ -94,39 +97,9 @@ class inSpheroChipTilterCore(ComDevice):
         self.currentParameterSet = self.GetDefaultParameterSet()
         
         
+        flags['onDetCallback'] = self.StartInMessageThread
         
-        
-        # check given parameters
-        if 'coreStartTime' in flags.keys():
-            self.coreStartTime = flags['coreStartTime']
-        else:
-            self.coreStartTime = coreUtils.GetDateTimeAsString()
-            
-            
-        
-        # initialize logger
-        if 'logger' in flags.keys():
-            self.logger  = flags['logger']
-        elif 'logToFile' in flags.keys():
-            if flags['logToFile']:
-                if 'logFile' in flags.keys():
-                    self.logFile = flags['logFile']
-                else:
-                    self.logFile = 'session_' + self.coreStartTime + '.log'
-                    
-                self.logger = coreUtils.InitLogger(self.logFile, __name__)
-            else:
-                self.logger = coreUtils.InitLogger(caller=__name__)
-        else:
-            self.logger  = coreUtils.InitLogger(caller=__name__)
-
-
-            
-        # setup, if not already done
-        if 'comPort' in flags.keys():
-            self.comPort = flags['comPort']
-        else:
-            ComDevice.__init__(self, self._usbName, flags, 'Try to detect inSphero chip tilter...', self.logger, self.StartInMessageThread)
+        DeviceCore.__init__(self, **flags)
         
 ### -------------------------------------------------------------------------------------------------------------------------------
 
@@ -134,10 +107,7 @@ class inSpheroChipTilterCore(ComDevice):
         
         self.StopInMessageThread()
         
-        ComDevice.__del__(self, __name__)
-        
-        # close logger handle
-        coreUtils.TerminateLogger(__name__)
+        DeviceCore.__del__(self)
         
         
         
@@ -209,7 +179,7 @@ class inSpheroChipTilterCore(ComDevice):
             if not self.SaveCloseComPort():
                 success = False
             else:
-                self.logger.info('Tilter setup updated.')
+                self._logger.info('Tilter setup updated.')
             
         return success
     
@@ -257,7 +227,7 @@ class inSpheroChipTilterCore(ComDevice):
         if self.comPortStatus:
             if self.SaveWriteToComPort(b, leaveOpen=True):
                 sleep(50e-3)
-                self.logger.debug( 'Sent %s to tilter' % coreUtils.GetTextFromByteStream(b) )
+                self._logger.debug( 'Sent %s to tilter' % coreUtils.GetTextFromByteStream(b) )
             else:
                 success = False
                 
@@ -407,7 +377,7 @@ class inSpheroChipTilterCore(ComDevice):
                     try:
                         val = int(val)
                     except ValueError:
-                        self.logger.error('Could not extract number from %s' % param)
+                        self._logger.error('Could not extract number from %s' % param)
                     else:
                         self.currentParameterSet[key] = val
     
@@ -454,7 +424,7 @@ class inSpheroChipTilterCore(ComDevice):
         success = True
         
         if not self.comPortStatus:
-            self.logger.error('Attempting to start tilter, without proper initialization! Check connection to inSphero tilter!')
+            self._logger.error('Attempting to start tilter, without proper initialization! Check connection to inSphero tilter!')
             success = False
             
         # com port status is OK
@@ -469,7 +439,7 @@ class inSpheroChipTilterCore(ComDevice):
                 
                 if success:
                     self.isTilting = True
-                    self.logger.info('Started tilting.')
+                    self._logger.info('Started tilting.')
         
         return success
     
@@ -480,7 +450,7 @@ class inSpheroChipTilterCore(ComDevice):
         success = True
         
         if not self.comPortStatus:
-            self.logger.error('Could not stop tilting! Check connection to inSphero tilter!')
+            self._logger.error('Could not stop tilting! Check connection to inSphero tilter!')
             success = False
             
         # com port status is OK
@@ -495,7 +465,7 @@ class inSpheroChipTilterCore(ComDevice):
                 
                 if success:
                     self.isTilting = False
-                    self.logger.info('Stopped tilting.')
+                    self._logger.info('Stopped tilting.')
             
         return success
     
@@ -531,7 +501,6 @@ class inSpheroChipTilterCore(ComDevice):
                 # join concurrent and main thread
                 self.inMessageThread.join()
                 
-                
 ### -------------------------------------------------------------------------------------------------------------------------------
     #######################################################################
     ###                    --- SET/GET FUNCTIONS ---                    ###
@@ -546,7 +515,7 @@ class inSpheroChipTilterCore(ComDevice):
                 try:
                     val = int(val)
                 except ValueError:
-                    self.logger.error('Could not convert \'%s\' to integer' % val)
+                    self._logger.error('Could not convert \'%s\' to integer' % val)
                 else:
                     if key in ['posAngle', 'negAngle', 'posMotion', 'negMotion'] and val < 1:
                         val = 1
@@ -585,7 +554,7 @@ class inSpheroChipTilterCore(ComDevice):
         if key in self.setup.keys():
             return self.setup[key]
         else:
-            self.logger.error('%s not in setup' % key)
+            self._logger.error('%s not in setup' % key)
         
     
 ### -------------------------------------------------------------------------------------------------------------------------------
@@ -595,7 +564,7 @@ class inSpheroChipTilterCore(ComDevice):
         if key in self._parameters:
             return self.currentParameterSet[key]
         else:
-            self.logger.error('%s not in parameter set' % key)
+            self._logger.error('%s not in parameter set' % key)
         
     
 ### -------------------------------------------------------------------------------------------------------------------------------
