@@ -10,9 +10,9 @@ from time import sleep
 # in case this guy is used somewhere else
 # we need different loading of modules
 try:
-    from libs.DeviceCore import DeviceCore
+    from libs.CoreDevice import CoreDevice
 except ImportError:
-    from DeviceCore import DeviceCore
+    from CoreDevice import CoreDevice
 
 try:
     from libs import coreUtilities as coreUtils
@@ -22,7 +22,7 @@ except ImportError:
 
 
 
-class ArduinoCore(DeviceCore):
+class ArduinoCore(CoreDevice):
     
     # serial port flags
     _baudrate = 115200
@@ -42,12 +42,12 @@ class ArduinoCore(DeviceCore):
         flags['baudrate'] = self._baudrate
         flags['dtr']      = self._dtr
         
-        DeviceCore.__init__(self, **flags)
+        CoreDevice.__init__(self, **flags)
 
 
             
         # use given chipConfig file or use default one
-        self._chipConfigFile   = flags.get( 'chipConfigFile', './cfg/ChipConfig.json'     )
+        self._chipConfigFile   = flags.get( 'chipConfigFile'  , './cfg/ChipConfig.json'   )
         
         # use given switchConfig file or use default one
         self._switchConfigFile = flags.get( 'switchConfigFile', './cfg/SwitchConfig.json' )
@@ -78,7 +78,7 @@ class ArduinoCore(DeviceCore):
 
     def __del__(self):
         
-        DeviceCore.__del__(self)
+        CoreDevice.__del__(self)
         
         
             
@@ -99,6 +99,7 @@ class ArduinoCore(DeviceCore):
             else:
                 self.chipConfigStatus = False
                 success = False
+                self.logger.error('Could not find chip config file: %s' % fName)
                 
         elif key == 'swc':
             self.switchConfig = coreUtils.LoadJsonFile( fName, __name__ )
@@ -108,6 +109,7 @@ class ArduinoCore(DeviceCore):
             else:
                 self.switchConfigStatus = False
                 success = False
+                self.logger.error('Could not find switch config file: %s' % fName)
                 
         return success
         

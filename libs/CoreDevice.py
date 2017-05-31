@@ -20,7 +20,7 @@ except ImportError:
     
     
 
-class DeviceCore(ComDevice, Logger):
+class CoreDevice(ComDevice, Logger):
     
     def __init__(self, **flags):
         

@@ -10,12 +10,12 @@ import threading
 from time import sleep
 
 import libs.coreUtilities as coreUtils
-from libs.DeviceCore import DeviceCore
+from libs.CoreDevice import CoreDevice
 
 
 
 
-class inSpheroChipTilterCore(DeviceCore):
+class inSpheroChipTilterCore(CoreDevice):
 
     # HEX addresses for certain commands
     # for check sum calculation address needs to be stored as two individual bytes
@@ -99,7 +99,7 @@ class inSpheroChipTilterCore(DeviceCore):
         
         flags['onDetCallback'] = self.StartInMessageThread
         
-        DeviceCore.__init__(self, **flags)
+        CoreDevice.__init__(self, **flags)
         
 ### -------------------------------------------------------------------------------------------------------------------------------
 
@@ -107,7 +107,7 @@ class inSpheroChipTilterCore(DeviceCore):
         
         self.StopInMessageThread()
         
-        DeviceCore.__del__(self)
+        CoreDevice.__del__(self)
         
         
         

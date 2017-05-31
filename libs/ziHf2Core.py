@@ -13,10 +13,10 @@ import scipy as sp
 from time import sleep, time, perf_counter
 
 from libs import coreUtilities as coreUtils
-from libs.DeviceCore import DeviceCore
+from libs.CoreDevice import CoreDevice
 
 
-class ziHf2Core(DeviceCore):
+class ziHf2Core(CoreDevice):
     
     _deviceId       = ['dev10', 'dev275']
     _deviceApiLevel = 1
@@ -62,7 +62,7 @@ class ziHf2Core(DeviceCore):
         
         flags['detCallback'] = self.DetectDeviceAndSetupPort
         
-        DeviceCore.__init__(self, **flags)
+        CoreDevice.__init__(self, **flags)
     
 ### -------------------------------------------------------------------------------------------------------------------------------
         
@@ -77,7 +77,7 @@ class ziHf2Core(DeviceCore):
 
         self.StopPoll()
         
-        DeviceCore.__del__(self)
+        CoreDevice.__del__(self)
         
     
 ### -------------------------------------------------------------------------------------------------------------------------------
