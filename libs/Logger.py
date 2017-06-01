@@ -14,12 +14,12 @@ except ImportError:
 
 class Logger:
     
-    def __init__(self, logFile=None, logToFile=False, logLevel=log.DEBUG, datefmt='%m/%d/%Y %I:%M:%S %p'):
+    def __init__(self, logToFile=False, logFile=None, logLevel=None):
             
         self._logFile    = logFile
         self._logToFile  = logToFile
         self._caller     = self.__class__.__name__        # use parent name for logger init
-        self._logLevel   = logLevel
+        self._logLevel   = logLevel if logLevel else log.DEBUG
         
         # write anyway to file
         if self._logFile:
@@ -34,7 +34,7 @@ class Logger:
         self.logger.setLevel(self._logLevel)
         
         # create formatter
-        formatter = log.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt=datefmt)
+        formatter = log.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
         
         # create file handler and set level to debug
         # all messages higher in priority are written to file
@@ -70,8 +70,6 @@ class Logger:
         # add formatter to ch
         ch.setFormatter(formatter)
         
-        print('__init__ self.logger.handlers: %s' % self.logger.handlers)
-        
         # add ch to logger
         # apparently Spyder messes up, so let's check if something is already there
         if self.logger.handlers == []:
@@ -81,10 +79,6 @@ class Logger:
 
     def __del__(self):
         
-        print('__del__ self.logger.handlers: %s' % self.logger.handlers)
-            
         for handler in self.logger.handlers:
             handler.close()
             self.logger.removeHandler(handler)
-        
-        del self.logger

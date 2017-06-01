@@ -9,17 +9,28 @@ import threading
 
 from time import sleep
 
-import libs.coreUtilities as coreUtils
-from libs.CoreDevice import CoreDevice
+# in case this guy is used somewhere else
+# we need different loading of modules
+try:
+    from libs.CoreDevice import CoreDevice
+except ImportError:
+    from CoreDevice import CoreDevice
+    
+try:
+    from libs import coreUtilities as coreUtils
+except ImportError:
+    import coreUtilities as coreUtils
 
 
 
 
-class inSpheroChipTilterCore(CoreDevice):
+
+
+class ChipTilterCore(CoreDevice):
 
     # HEX addresses for certain commands
     # for check sum calculation address needs to be stored as two individual bytes
-    _addresses = {
+    __addresses__ = {
             'posAngle'   : ['0xFF', '0x00'],
             'negAngle'   : ['0xFF', '0x01'],
             'posMotion'  : ['0xFF', '0x02'],
@@ -39,7 +50,7 @@ class inSpheroChipTilterCore(CoreDevice):
     # NOTE: single bits should not touch other values (overwrite)
     #       use OR to set
     #       use ~ to unset
-    _statusBits = {
+    __statusBits__ = {
             'stopTilter'  : 0x00,
             'startTilter' : 0x01,
             'plusMinusOff': 0x00,
@@ -51,26 +62,25 @@ class inSpheroChipTilterCore(CoreDevice):
         }
         
     # parameters received from the tilter
-    _parameters = ['ID', 'A+', 'A-', 'M+', 'M-', 'm', 'P+', 'P-', 'p', 'H', 'T', 't', 'S']
+    __parameters__ = ['ID', 'A+', 'A-', 'M+', 'M-', 'm', 'P+', 'P-', 'p', 'H', 'T', 't', 'S']
 
     # supported events for callback functions
-    _supportedEvents = ['onPosDown', 'onPosUp', 'onNegDown', 'onNegUp', 'onPosWait', 'onNegWait']
+    __supportedEvents__ = ['onPosDown', 'onPosUp', 'onNegDown', 'onNegUp', 'onPosWait', 'onNegWait']
         
     # titler can be auto detected through this string
-    _usbName = 'USB Serial Port'
+    __usbName__ = 'USB Serial Port'
     
     # message for detection
-    _detMsg = 'Try to detect inSphero chip tilter...'
+    __detMsg__ = 'Try to detect inSphero chip tilter...'
     
     # define number for force writing
-    _numForces = 3
+    __numForces__ = 3
     
 ### -------------------------------------------------------------------------------------------------------------------------------
     
     def __init__(self, **flags):
         
         # to stop while loop for reading tilter stream
-        self.stopReading     = True
         self.isReading       = False
         self.inMessageThread = None
         
@@ -157,7 +167,7 @@ class inSpheroChipTilterCore(CoreDevice):
         
 ### -------------------------------------------------------------------------------------------------------------------------------
 
-    def WriteSetup(self, mode='normal', byteStream=None):
+    def WriteSetup(self, byteStream=None, mode='normal'):
         
         success = True
         
@@ -179,7 +189,7 @@ class inSpheroChipTilterCore(CoreDevice):
             if not self.SaveCloseComPort():
                 success = False
             else:
-                self._logger.info('Tilter setup updated.')
+                self.logger.info('Tilter setup updated.')
             
         return success
     
@@ -189,7 +199,7 @@ class inSpheroChipTilterCore(CoreDevice):
         
         stream = []
         
-        for key, address in self._addresses.items():
+        for key, address in self.__addresses__.items():
             # set following ones to 1 otherwise tilter will get crazy
             if key in ['posAngle', 'negAngle', 'posMotSec', 'negMotSec']:
                 stream.append( self.GenerateByteStream(address, 1) )
@@ -202,7 +212,7 @@ class inSpheroChipTilterCore(CoreDevice):
 ### -------------------------------------------------------------------------------------------------------------------------------
 
     def ResetTilterSetup(self, mode='normal'):
-        return self.WriteSetup(mode, self.resetStream)
+        return self.WriteSetup(self.resetStream, mode)
     
 ### -------------------------------------------------------------------------------------------------------------------------------
 
@@ -211,7 +221,7 @@ class inSpheroChipTilterCore(CoreDevice):
         success = True
         
         # write multiple time to force tilter to accept stream
-        for i in range(self._numForces):
+        for i in range(self.__numForces__):
             if not self.WriteStream(b):
                 success = False
                 break
@@ -227,7 +237,7 @@ class inSpheroChipTilterCore(CoreDevice):
         if self.comPortStatus:
             if self.SaveWriteToComPort(b, leaveOpen=True):
                 sleep(50e-3)
-                self._logger.debug( 'Sent %s to tilter' % coreUtils.GetTextFromByteStream(b) )
+                self.logger.debug( 'Sent %s to tilter' % coreUtils.GetTextFromByteStream(b) )
             else:
                 success = False
                 
@@ -242,10 +252,7 @@ class inSpheroChipTilterCore(CoreDevice):
             # reset tilter state for new run
             self.tilterState = self.GetDefaultTilterState()
             
-            # everything should be fine here... so set TRUE
-            self.isReading = True
-            
-            while not self.stopReading:
+            while self.isReading:
                 
                 # after splitting last entry in list is always emtpy, if character was in stream
                 # check for this, otherwise wait for new input
@@ -253,6 +260,11 @@ class inSpheroChipTilterCore(CoreDevice):
                 
                 if len(inMsg) != 0:
                     self.HandleInMessageQueue(inMsg)
+                    
+                # there must be something wrong with the serial port
+                # kill task...
+                elif not self.comPortStatus:
+                    self.isReading = False
                         
             
                 # message are sent every 2s by the tilter
@@ -260,9 +272,6 @@ class inSpheroChipTilterCore(CoreDevice):
         
             # properly close port
             self.SaveCloseComPort()
-            
-            # parallel thread is about to end... so set FALSE
-            self.isReading = False
     
 ### -------------------------------------------------------------------------------------------------------------------------------
 
@@ -368,7 +377,7 @@ class inSpheroChipTilterCore(CoreDevice):
 
     def ExtractParameters(self, msg):
         
-        for key in self._parameters:
+        for key in self.__parameters__:
             paramSet = msg.split(';')
             for param in paramSet:
                 if key in param:
@@ -377,7 +386,7 @@ class inSpheroChipTilterCore(CoreDevice):
                     try:
                         val = int(val)
                     except ValueError:
-                        self._logger.error('Could not extract number from %s' % param)
+                        self.logger.error('Could not extract number from %s' % val)
                     else:
                         self.currentParameterSet[key] = val
     
@@ -424,7 +433,7 @@ class inSpheroChipTilterCore(CoreDevice):
         success = True
         
         if not self.comPortStatus:
-            self._logger.error('Attempting to start tilter, without proper initialization! Check connection to inSphero tilter!')
+            self.logger.error('Attempting to start tilter, without proper initialization! Check connection to inSphero tilter!')
             success = False
             
         # com port status is OK
@@ -439,7 +448,7 @@ class inSpheroChipTilterCore(CoreDevice):
                 
                 if success:
                     self.isTilting = True
-                    self._logger.info('Started tilting.')
+                    self.logger.info('Started tilting.')
         
         return success
     
@@ -450,7 +459,7 @@ class inSpheroChipTilterCore(CoreDevice):
         success = True
         
         if not self.comPortStatus:
-            self._logger.error('Could not stop tilting! Check connection to inSphero tilter!')
+            self.logger.error('Could not stop tilting! Check connection to inSphero tilter!')
             success = False
             
         # com port status is OK
@@ -465,7 +474,7 @@ class inSpheroChipTilterCore(CoreDevice):
                 
                 if success:
                     self.isTilting = False
-                    self._logger.info('Stopped tilting.')
+                    self.logger.info('Stopped tilting.')
             
         return success
     
@@ -475,31 +484,32 @@ class inSpheroChipTilterCore(CoreDevice):
         
         # otherwise there is no need to start thread
         if self.comPortStatus:
-                    
+            
+            # sleep for 30 ms to make sure no concurrent task tries to open the serial port for the tilter...
+#            sleep(30e-3)
+            
             # initialize new thread
             self.inMessageThread = threading.Thread(target=self.ReadStream)
             # once message thread is started loop is running till StopTilter() was called
-            self.stopReading = False
+            self.isReading = True
             # start parallel thread
             self.inMessageThread.start()
             
-            # sleep for 30 ms to make sure no concurrent task tries to open the serial port for the tilter...
-            sleep(30e-3)
     
 ### -------------------------------------------------------------------------------------------------------------------------------
 
     def StopInMessageThread(self):
                 
         # to stop while loop for reading tilter stream
-        self.stopReading = True
+        self.isReading = False
         
         if self.comPort:
-            while self.comPort.isOpen() or self.isReading:
+            while self.comPort.isOpen():
                 sleep(1e-3)
         
-            if self.inMessageThread:
-                # join concurrent and main thread
-                self.inMessageThread.join()
+        if self.inMessageThread:
+            # join concurrent and main thread
+            self.inMessageThread.join()
                 
 ### -------------------------------------------------------------------------------------------------------------------------------
     #######################################################################
@@ -515,13 +525,13 @@ class inSpheroChipTilterCore(CoreDevice):
                 try:
                     val = int(val)
                 except ValueError:
-                    self._logger.error('Could not convert \'%s\' to integer' % val)
+                    self.logger.error('Could not convert \'%s\' to integer' % val)
                 else:
                     if key in ['posAngle', 'negAngle', 'posMotion', 'negMotion'] and val < 1:
                         val = 1
                         
-                    self.setup.update        ( {key: val}                )
-                    self.ConvertSetupToStream( self._addresses[key], val )
+                    self.setup.update        ( {key: val}                   )
+                    self.ConvertSetupToStream( self.__addresses__[key], val )
                     
             elif key in ['posPause', 'negPause', 'horPause', 'totTime']:
                 
@@ -534,8 +544,8 @@ class inSpheroChipTilterCore(CoreDevice):
                     self.setup.update( {'%sMin'%key: mins} )
                     self.setup.update( {'%sSec'%key: secs} )
                     
-                    self.ConvertSetupToStream( self._addresses['%sMin'%key], mins )
-                    self.ConvertSetupToStream( self._addresses['%sSec'%key], secs )
+                    self.ConvertSetupToStream( self.__addresses__['%sMin'%key], mins )
+                    self.ConvertSetupToStream( self.__addresses__['%sSec'%key], secs )
                     
                 elif key == 'totTime':
                     
@@ -544,8 +554,8 @@ class inSpheroChipTilterCore(CoreDevice):
                     self.setup.update( {'%sHrs'%key: hrs}  )
                     self.setup.update( {'%sMin'%key: mins} )
                     
-                    self.ConvertSetupToStream( self._addresses['%sHrs'%key], hrs  )
-                    self.ConvertSetupToStream( self._addresses['%sMin'%key], mins )
+                    self.ConvertSetupToStream( self.__addresses__['%sHrs'%key], hrs  )
+                    self.ConvertSetupToStream( self.__addresses__['%sMin'%key], mins )
     
 ### -------------------------------------------------------------------------------------------------------------------------------
 
@@ -554,17 +564,17 @@ class inSpheroChipTilterCore(CoreDevice):
         if key in self.setup.keys():
             return self.setup[key]
         else:
-            self._logger.error('%s not in setup' % key)
+            self.logger.error('%s not in setup' % key)
         
     
 ### -------------------------------------------------------------------------------------------------------------------------------
 
     def GetParameter(self, key):
             
-        if key in self._parameters:
+        if key in self.__parameters__:
             return self.currentParameterSet[key]
         else:
-            self._logger.error('%s not in parameter set' % key)
+            self.logger.error('%s not in parameter set' % key)
         
     
 ### -------------------------------------------------------------------------------------------------------------------------------
@@ -620,7 +630,7 @@ class inSpheroChipTilterCore(CoreDevice):
         
         d = {}
         
-        for k in self._supportedEvents:
+        for k in self.__supportedEvents__:
             d.update( {k: self.GetDefaultEventDescriptor()} )
             
         return d
@@ -636,7 +646,7 @@ class inSpheroChipTilterCore(CoreDevice):
         
         d = {}
         
-        for k in self._parameters:
+        for k in self.__parameters__:
             d.update({k: -1})
             
         return d
@@ -695,3 +705,122 @@ class inSpheroChipTilterCore(CoreDevice):
 
     def IsTilting(self):
         return self.isTilting
+            
+            
+            
+            
+###############################################################################
+###############################################################################
+###                     --- DEBUG CODE HERE ---                             ###
+###############################################################################
+###############################################################################
+
+if __name__ == '__main__':
+    
+    # create tilter object and initialize
+    tilter = ChipTilterCore()
+    # suppress debug messages and only show info + error
+#    tilter = ChipTilterCore(logLevel='INFO')
+    
+    # reset tilter memory to default values
+    tilter.ResetTilterSetup()
+    #tilter.ResetTilterSetup(mode='force')
+    
+    # change level here
+    tilter.logger.setLevel('INFO')
+    
+    ##############################
+    ### - SET TILTING ANGLES - ###
+    ##############################
+    
+    # set positive tilting angle to 45 degree
+    tilter.SetValue('posAngle', 65)
+    # set negative tilting angle to 30 degree
+    tilter.SetValue('negAngle', 65)
+    
+    ##############################
+    ### - SET MOTION TIMINGS - ###
+    ##############################
+    
+    # set positive motion time to 12 sec
+    tilter.SetValue('posMotion', 12)
+    # set negative motion time to 15 sec
+    tilter.SetValue('negMotion', 12)
+    
+    #############################
+    ### - SET PAUSE TIMINGS - ###
+    #############################
+    
+    # set positive waiting time to 30 sec
+    tilter.SetValue('posPause', '15')
+    # set negative waiting time to 1:30
+    tilter.SetValue('negPause', '15')
+    
+    
+    ##############################
+    ### - WRITE TILTER SETUP - ###
+    ##############################
+    
+    # now let's write the setup to the tilter
+    tilter.WriteSetup()
+    #tilter.WriteSetup(mode='force')
+    
+    
+    # change back to debug
+    tilter.logger.setLevel('DEBUG')
+    
+#    ##############################
+#    ### - START/STOP TILTING - ###
+#    ##############################
+#    
+#    # start tilting with current setup
+#    tilter.StartTilter()
+#    
+#    # sleep for 10 seconds
+#    sleep(10)
+#    
+#    # stop tilting
+#    tilter.StopTilter()
+    
+    
+#    #################################
+#    ### - DEFINE TILTING EVENTS - ###
+#    #################################
+#    # define event for waiting on the positive side
+#    tilter.SetTilterEvent( 'onPosWait', onPosWait               )
+#    
+#    # define event for moving down on the negative side
+#    tilter.SetTilterEvent( 'onNegDown', onNegDown               )
+#    
+#    # define event for waiting on the negative side to start the counter for the delay
+#    tilter.SetTilterEvent( 'onNegWait', onNegWait               )
+#    
+#    # define event for waiting on the negative side, but delayed by 5 seconds
+#    tilter.SetTilterEvent( 'onNegWait', onNegWaitDelay, delay=5 )
+#    
+#    # define stop command when the tilter moves up on the negative side - one cycle finished
+#    #tilter.SetTilterEvent( 'onNegUp'  , tilter.StopTilter       )
+#    
+#    # define event to execute the function every second time the tilter is waiting on the positive side
+#    tilter.SetTilterEvent( 'onPosWait', onPosWaitEveryTwo, it=2 )
+#    
+#    
+#    
+#    # start tilting again to see the printouts from the callback functions for the defined events
+#    tilter.StartTilter()
+#    
+#    
+#    
+#    # print current positive angle received from the tilter
+#    print( 'A+ %s' % tilter.GetParameter('A+')   )
+#    
+#    # print current positive motion time received from the tilter
+#    print( 'M+ %s s' % tilter.GetParameter('M+') )
+#    
+#    
+#    
+#    while tilter.IsTilting():
+#        print('My pause still takes %s s' % tilter.GetParameter('p'))
+#        sleep(2)
+
+    tilter.__del__()

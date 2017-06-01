@@ -25,6 +25,7 @@ class CoreDevice(ComDevice, Logger):
     def __init__(self, **flags):
         
         logFile       = flags.get('logFile')
+        logLevel      = flags.get('logLevel')
         detCallback   = flags.get('detCallback')
         onDetCallback = flags.get('onDetCallback')
         
@@ -34,7 +35,7 @@ class CoreDevice(ComDevice, Logger):
             flags.pop('onDetCallback')
         
         # initialize logger
-        Logger.__init__(self, logFile)
+        Logger.__init__(self, logFile=logFile, logLevel=logLevel)
         
         # initialize com port
         ComDevice.__init__(self, detCallback, onDetCallback, **flags)

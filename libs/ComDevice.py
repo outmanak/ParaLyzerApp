@@ -24,13 +24,13 @@ class ComDevice:
     
     def __init__(self, detCallback=None, onDetCallback=None, **flags):
         
-        self.comPortList               = []
-        self.comPortListIdx            = 0          # in case multiple devices were found use this
+        self._comPortList              = []
+        self._comPortListIdx           = 0          # in case multiple devices were found use this
         self.comPortInfo               = None
         self.comPort                   = None
         self.comPortStatus             = False
-        self._comPortName              = self._usbName if hasattr(self, '_usbName') else None
-        self._detMsg                   = self._detMsg  if hasattr(self, '_detMsg' ) else None
+        self._comPortName              = self.__usbName__ if hasattr(self, '__usbName__') else None
+        self._detMsg                   = self.__detMsg__  if hasattr(self, '__detMsg__' ) else None
         self._comPortDetectCallback    = onDetCallback        # function to be called after initialization of serial port
         self._isReadingWriting         = False
         self._isAboutToOpenClose       = False
@@ -65,7 +65,12 @@ class ComDevice:
     def DetectDevice(self):
         # try to detect com device
         
-        found = False
+        # reset com port variables
+        self._comPortList    = []
+        self._comPortListIdx = 0
+        self.comPort         = None
+        self.comPortInfo     = None
+        self.comPortStatus   = False
         
         # put message to the logger
         if self._detMsg and hasattr(self, 'logger'):
@@ -74,20 +79,18 @@ class ComDevice:
         # NOTE: serial.tools.list_ports.grep(name) does not seem to work...
         for p in serial.tools.list_ports.comports():
             if self._comPortName in p.description:
-                self.comPortList.append(p)
-                
-                found = True
+                self._comPortList.append(p)
                 
                 if hasattr(self, 'logger'):
                     self.logger.info('Found device \'%s\' on \'%s\'.' % (p[1], p[0]))
                 
-        if len(self.comPortList) == 1:
-            self.comPortInfo = self.comPortList[0]
+        if len(self._comPortList) == 1:
+            self.comPortInfo = self._comPortList[self._comPortListIdx]
         else:
             None
             # multiple ones found...user needs to choose the correct port...
         
-        if not found and hasattr(self, 'logger'):
+        if not self.comPortInfo and hasattr(self, 'logger'):
             self.logger.info('Could not be found!')
             
 ### -------------------------------------------------------------------------------------------------------------------------------
@@ -207,6 +210,7 @@ class ComDevice:
                 if not self._isAboutToOpenClose:
                     self.comPort.write(outData)
             except (serial.SerialException, serial.SerialTimeoutException):
+                self.comPortStatus = False
                 success = False
                 if hasattr(self, 'logger'):
                     self.logger.error( 'Could not write: \'%s\' to port \'%s\'!' % (outData, self.comPortInfo[0]) )                
@@ -273,6 +277,7 @@ class ComDevice:
                             inData += self.comPort.read(self.comPort.in_waiting)
                             
             except (serial.SerialException, serial.SerialTimeoutException):
+                self.comPortStatus = False
                 if hasattr(self, 'logger'):
                     self.logger.error('Could not read bytes from port \'%s\'!' % self.comPortInfo[0])
             

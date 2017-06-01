@@ -16,7 +16,7 @@ from libs import coreUtilities as coreUtils
 from libs.CoreDevice import CoreDevice
 
 
-class ziHf2Core(CoreDevice):
+class Hf2Core(CoreDevice):
     
     _deviceId       = ['dev10', 'dev275']
     _deviceApiLevel = 1
@@ -67,13 +67,6 @@ class ziHf2Core(CoreDevice):
 ### -------------------------------------------------------------------------------------------------------------------------------
         
     def __del__(self):
-        
-#        self.stopMeas = True
-#        
-#        sleep(50e-3)
-#        
-#        if self.pollThread:
-#            self.pollThread.join()
 
         self.StopPoll()
         

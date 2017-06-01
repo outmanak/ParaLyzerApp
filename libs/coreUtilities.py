@@ -157,6 +157,12 @@ def GetMinSecFromString(tString):
     secs = 0
     mins = 0
     
+    # in case a number was passed don't freak out
+    if isinstance(tString, int):
+        tString = str(tString)
+        
+    assert isinstance(tString, str), 'Expect string or integer, not %r' % type(tString)
+    
     # just seconds
     if tString.find(':') == -1:
         try:

@@ -60,7 +60,7 @@ class ParaLyzerApp(Logger, StatusBar):
         self._logFile      = 'session_' + self._appStartTime + '.log'
         
         # init logger
-        Logger.__init__(self, self._logFile)
+        Logger.__init__(self, logFile=self._logFile)
         
         self.logger.info('Starting program...')
         
@@ -564,10 +564,15 @@ class ParaLyzerApp(Logger, StatusBar):
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
-    def UpdateDetectionLabels(self):
+    def UpdateDetectionLabels(self, key='all'):
         
         # change text according to detection status
-        detectStatus = self.paraLyzerCore.GetDetectionStatus()
+        detectStatus = self.paraLyzerCore.GetDetectionStatus(key)
+        
+        # to simplify function structure pack bool into dictionary
+        if key != 'all':
+            detectStatus = {key:detectStatus}
+            
         for key, val in detectStatus.items():
             # call update function to print new value
             if val:
@@ -629,33 +634,13 @@ class ParaLyzerApp(Logger, StatusBar):
     
     def UpdateStreamFlags(self, **flags):
         
-        if 'dbg' in flags:
-            if flags['dbg']:
-                self.streamFlags['dbg'] = True
-            else:
-                self.streamFlags['dbg'] = False
-        
-        if 'std' in flags:
-            self.streamFlags['cnti'] = True
-            self.streamFlags['viai'] = True
-
-        if 'ard' in flags:
-            if flags['ard']:
-                self.streamFlags['ard'] = True
-            else:
-                self.streamFlags['ard'] = False
-
-        if 'hf2' in flags:
-            if flags['hf2']:
-                self.streamFlags['hf2'] = True
-            else:
-                self.streamFlags['hf2'] = False
-
-        if 'til' in flags:
-            if flags['til']:
-                self.streamFlags['til'] = True
-            else:
-                self.streamFlags['til'] = False
+        # get new value from flag or use old one
+        self.streamFlags['dbg' ] = flags.get( 'dbg', self.streamFlags['dbg' ] )
+        self.streamFlags['cnti'] = flags.get( 'std', self.streamFlags['cnti'] )
+        self.streamFlags['viai'] = flags.get( 'std', self.streamFlags['viai'] )
+        self.streamFlags['ard' ] = flags.get( 'ard', self.streamFlags['ard' ] )
+        self.streamFlags['hf2' ] = flags.get( 'hf2', self.streamFlags['hf2' ] )
+        self.streamFlags['til' ] = flags.get( 'til', self.streamFlags['til' ] )
             
 ### -------------------------------------------------------------------------------------------------------------------------------
     
@@ -1188,8 +1173,8 @@ class ParaLyzerApp(Logger, StatusBar):
         #########################
         elif button in ['ard', 'hf2', 'til', 'cam']:
             
-            if self.paraLyzerCore.DetectDevices(button):
-                self.UpdateDetectionLabels()
+            self.paraLyzerCore.DetectDevices( button )
+            self.UpdateDetectionLabels      ( button )
         
                 
         ###############################

@@ -8,8 +8,8 @@ Created on Tue May  9 18:46:57 2017
 from libs import coreUtilities as coreUtils
 
 from libs.ArduinoCore import ArduinoCore
-from libs.ziHf2Core import ziHf2Core
-from libs.inSpheroChipTilterCore import inSpheroChipTilterCore
+from libs.Hf2Core import Hf2Core
+from libs.ChipTilterCore import ChipTilterCore
 
 try:
     from libs.Logger import Logger
@@ -19,17 +19,14 @@ except ImportError:
 
 class ParaLyzerCore(Logger):
         
-    _fileKeys = ['cfg', 'swc', 'chc', 'stf', 'log', 'lfl']
-    _detKeys  = ['hf2', 'ard', 'cam', 'til']
+    __fileKeys__ = ['cfg', 'swc', 'chc', 'stf', 'log', 'lfl']
+    __detKeys__  = ['hf2', 'ard', 'cam', 'til']
 
 ### -------------------------------------------------------------------------------------------------------------------------------
     
     def __init__(self, **flags):
         
-        logFile = flags.get('logFile')
-        
-        Logger.__init__(self, logFile)
-                
+        Logger.__init__( self, logFile=flags.get('logFile') )
         
         
         # standard content of config file
@@ -70,18 +67,21 @@ class ParaLyzerCore(Logger):
         
         
         # initialize devices
-        self.arduino = ArduinoCore           ( self.SetupArduino,     **flags, **files )
-        self.hf2     = ziHf2Core             ( self.stdConfig['stf'], **flags          )
-        self.tilter  = inSpheroChipTilterCore(                        **flags          )
+        self.arduino = ArduinoCore   ( selectElectrodePairs=self.SetupArduino, **flags, **files )
+        self.hf2     = Hf2Core       ( baseStreamFolder=self.stdConfig['stf'], **flags          )
+        self.tilter  = ChipTilterCore(                                         **flags          )
         self.camera  = None
         
 ### -------------------------------------------------------------------------------------------------------------------------------
         
     def __del__(self):
+    
+        # deinit device objects
         self.arduino.__del__()
         self.hf2.__del__()
         self.tilter.__del__()
         
+        # deinit logger
         Logger.__del__(self)
         
         
@@ -101,7 +101,7 @@ class ParaLyzerCore(Logger):
             success = self.hf2.DetectDeviceAndSetupPort()
             
         elif key == 'til':
-            self.tilter.DetectDeviceAndSetupPort()
+            success = self.tilter.DetectDeviceAndSetupPort()
             
         return success
         
@@ -329,10 +329,13 @@ class ParaLyzerCore(Logger):
                     newDict[key] = val
                     
                     # update configurations in case user selected different files
-                    if key in ['chc', 'swc']:
-                        success = self.arduino.UpdateConfig( key, self.stdConfig[key] )
-                        if not success:
-                            break
+                    if key == 'chc':
+                        success = self.arduino.UpdateConfig( chipConfig=self.stdConfig[key]   )
+                    elif key == 'swc':
+                        success = self.arduino.UpdateConfig( switchConfig=self.stdConfig[key] )
+                        
+                    if not success:
+                        break
                     
             # now write to file
             if success:
@@ -461,23 +464,22 @@ class ParaLyzerCore(Logger):
         
         status = None
         
-        if key != 'all':
-            if key == 'ard':
-                status = self.arduino.GetPortStatus()
-            elif key == 'hf2':
-                status = self.hf2.GetPortStatus()
-            elif key == 'til':
-                status = self.tilter.GetPortStatus()
-                
         # return status of all devices
-        else:
+        if key == 'all':
             status = {}
             status['ard'] = self.arduino.GetPortStatus()
             status['hf2'] = self.hf2.GetPortStatus()
             status['til'] = self.tilter.GetPortStatus()
             
+        # or just a single
+        elif key == 'ard':
+            status = self.arduino.GetPortStatus()
+        elif key == 'hf2':
+            status = self.hf2.GetPortStatus()
+        elif key == 'til':
+            status = self.tilter.GetPortStatus()
+            
         return status
-        
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
@@ -498,12 +500,12 @@ class ParaLyzerCore(Logger):
 ### -------------------------------------------------------------------------------------------------------------------------------
     
     def GetFileKeys(self):
-        return self._fileKeys
+        return self.__fileKeys__
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
     def GetDetectionKeys(self):
-        return self._detKeys
+        return self.__detKeys__
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     

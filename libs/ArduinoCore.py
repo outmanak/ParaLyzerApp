@@ -25,47 +25,45 @@ except ImportError:
 class ArduinoCore(CoreDevice):
     
     # serial port flags
-    _baudrate = 115200
-    _dtr      = False       # avoid pull-down of reset upon serial port opening
+    __baudrate__ = 115200
+    __dtr__      = False       # avoid pull-down of reset upon serial port opening
     
     # name for auto detection
-    _usbName = 'Arduino Uno'
+    __usbName__ = 'Arduino Uno'
     
     # message for detection
-    _detMsg = 'Try to detect Arduino Uno...'
+    __detMsg__ = 'Try to detect Arduino Uno...'
     
-    def __init__(self, ePairCallback=None, **flags):
-        
-        self.selectElectrodePairs = ePairCallback
+    def __init__(self, chipConfig='', switchConfig='', selectElectrodePairs=None, **flags):
             
         # setup com port
-        flags['baudrate'] = self._baudrate
-        flags['dtr']      = self._dtr
+        flags['baudrate'] = self.__baudrate__
+        flags['dtr']      = self.__dtr__
         
         CoreDevice.__init__(self, **flags)
-
-
-            
-        # use given chipConfig file or use default one
-        self._chipConfigFile   = flags.get( 'chipConfigFile'  , './cfg/ChipConfig.json'   )
         
+        # use given chipConfig file or use default one
+        self._chipConfigFile   = chipConfig   if chipConfig   else './cfg/ChipConfig.json'
         # use given switchConfig file or use default one
-        self._switchConfigFile = flags.get( 'switchConfigFile', './cfg/SwitchConfig.json' )
+        self._switchConfigFile = switchConfig if switchConfig else './cfg/SwitchConfig.json'
+        
+        # callback function for selecting and sorting previously defined electrode pairs
+        self._selectElectrodePairs = selectElectrodePairs
         
         # contains chamber-electrode connections, counting from 0 to 29
         # each two are one chamber with two different electrode pairs for counting and measuring viability
         # so 60 entries are in this file
-        self.UpdateConfig( 'chc', self._chipConfigFile )
+        self.UpdateConfig( chipConfig=self._chipConfigFile    )
         
         # contains switch-electrode assignment, counting from -2 to 29
         # 64 switches are availble in total, for flexibility 32 can be used in both directions (stim+rec)
         # two of them are used for debugging on current PCB (v4.0 Ketki) ... -2,-1 are not accessible as array index
         # the order is related to the IC on the PCB, starting with 0 from the connector (Sebastian counted the pad IDs descending from 29 in the same direction)
-        self.UpdateConfig( 'swc', self._switchConfigFile )
+        self.UpdateConfig( switchConfig=self._switchConfigFile )
         
         # define empty electrode pair dictionary
-        self._activeElectrodes = {
-        # this dictionary contains several standard structures depending on the chamber that was selected
+        self._definedElectrodePairs = {
+        # this dictionary contains several standard structures depending on the electrode pair that was defined
 #                'ID': {
 #                     'ePair': -1,
 #                     'int'  : -1
@@ -87,29 +85,29 @@ class ArduinoCore(CoreDevice):
             
 ### -------------------------------------------------------------------------------------------------------------------------------
 
-    def UpdateConfig(self, key, fName):
+    def UpdateConfig(self, chipConfig=None, switchConfig=None):
         
         success = True
         
-        if key == 'chc':
-            self.chipConfig = coreUtils.LoadJsonFile( fName, __name__ )
+        if chipConfig:
+            self._chipConfig = coreUtils.LoadJsonFile( chipConfig, __name__ )
             
-            if self.chipConfig != {}:
+            if self._chipConfig != {}:
                 self.chipConfigStatus = True
             else:
                 self.chipConfigStatus = False
                 success = False
-                self.logger.error('Could not find chip config file: %s' % fName)
+                self.logger.error('Could not find chip config file: %s' % chipConfig)
                 
-        elif key == 'swc':
-            self.switchConfig = coreUtils.LoadJsonFile( fName, __name__ )
+        if switchConfig:
+            self._switchConfig = coreUtils.LoadJsonFile( switchConfig, __name__ )
             
-            if self.switchConfig != {}:
+            if self._switchConfig != {}:
                 self.switchConfigStatus = True
             else:
                 self.switchConfigStatus = False
                 success = False
-                self.logger.error('Could not find switch config file: %s' % fName)
+                self.logger.error('Could not find switch config file: %s' % switchConfig)
                 
         return success
         
@@ -159,9 +157,9 @@ class ArduinoCore(CoreDevice):
         else:
             # find corresponding electrode pair in chip config file
             padIdx = 0
-            while padIdx < len(self.chipConfig['chamberToPad']):
+            while padIdx < len(self._chipConfig['chamberToPad']):
                 # get next pad setup
-                pads = self.chipConfig['chamberToPad'][padIdx]
+                pads = self._chipConfig['chamberToPad'][padIdx]
                 # stop loop when correct electrode pair setup was found
                 # use pads in subsequent code
                 if pads['ePairId'] == activeElectrodePair:
@@ -172,16 +170,16 @@ class ArduinoCore(CoreDevice):
             # in case loop left withput any results
             # e.g. an old file setup was used
             # just use the given variable as index
-            if padIdx == len(self.chipConfig['chamberToPad']):
-                pads = self.chipConfig['chamberToPad'][activeElectrodePair]
+            if padIdx == len(self._chipConfig['chamberToPad']):
+                pads = self._chipConfig['chamberToPad'][activeElectrodePair]
             
             self.logger.debug('pads: %s' % pads)
             
             # get switch index to close connection to stimulation/recording pad
-            for switchId in range(len(self.switchConfig)):
-                if (self.switchConfig[switchId]['padId'] == pads['stimPadId'] and self.switchConfig[switchId]['padType'] == 'stim'):
+            for switchId in range(len(self._switchConfig)):
+                if (self._switchConfig[switchId]['padId'] == pads['stimPadId'] and self._switchConfig[switchId]['padType'] == 'stim'):
                     switchesToActivate.append(switchId)
-                if (self.switchConfig[switchId]['padId'] == pads['recPadId']  and self.switchConfig[switchId]['padType'] == 'rec'):
+                if (self._switchConfig[switchId]['padId'] == pads['recPadId']  and self._switchConfig[switchId]['padType'] == 'rec'):
                     switchesToActivate.append(switchId)
                     
         # make sure Arduino receives sorted list
@@ -238,18 +236,18 @@ class ArduinoCore(CoreDevice):
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
-    def SetupArduino(self, **flags):
+    def SetupArduino(self, selectFunc=None, **flags):
         
         success = True
         
         # check debug flag
         # it's also possible to set self.debugMode directly
-        self.debugMode = flags.get('dbg', False)
+        self._debugMode = flags.get('debugMode', self._debugMode)
         
         # empty stream
         sendStream = []
 
-        ePairs = self.SelectElectrodePairs(**flags)
+        ePairs = self.SelectElectrodePairs(selectFunc, **flags)
         
         if len(ePairs) == 0:
             success = False
@@ -274,7 +272,7 @@ class ArduinoCore(CoreDevice):
         if success:
             
             # enable/disable debug for Arduino
-            if self.debugMode:
+            if self._debugMode:
                 success = self.SendMessage('debug 1')
             else:
                 success = self.SendMessage('debug 0')
@@ -291,7 +289,9 @@ class ArduinoCore(CoreDevice):
                 
                 success = self.SendMessage('setelectrodes %s %s' % (len(ePairs), sendStream))
                 
-                if not success:
+                if success:
+                    self.logger.info('Arduino setup was updated.')
+                else:
                     self.logger.error('Failed.')
         
         return success
@@ -309,12 +309,20 @@ class ArduinoCore(CoreDevice):
 ### -------------------------------------------------------------------------------------------------------------------------------
     
     def EnableDebug(self):
+        self.logger.info('Enable debug mode.')
+        # locally enable debug mode
         self._debugMode = True
+        # enable debug mode for Arduino
+        return self.SendMessage('debug 1')
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
     def DisableDebug(self):
+        self.logger.info('Disable debug mode.')
+        # locally disable debug mode
         self._debugMode = False
+        # disable debug mode for Arduino
+        return self.SendMessage('debug 0')
             
 ### -------------------------------------------------------------------------------------------------------------------------------
     
@@ -323,35 +331,40 @@ class ArduinoCore(CoreDevice):
         # if key is all set new timings for all exisiting chambers
         # coming ones will have directly the timings according to the setup
         
-        key = str(ePair)
+        key      = str(ePair)
+        interval = int(interval)
         
         # but only if not already exists
-        if key not in self.activeElectrodes.keys():
-            self.activeElectrodes[key] = (self.GetStandardElectrodePair())
+        if key not in self._definedElectrodePairs.keys():
+            self._definedElectrodePairs[key] = (self.GetStandardElectrodePair())
         
-        self.activeElectrodes[key]['ePair'] = ePair
-        self.activeElectrodes[key]['int']   = interval
+        self._definedElectrodePairs[key]['ePair'] = ePair
+        self._definedElectrodePairs[key]['int']   = interval
 
         self.logger.debug('Selected electrode pair %s with interval %s us.' % (ePair, interval))
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
     def UndefineAllElectrodePairs(self):
-        self.activeElectrodes = {}
+        self._definedElectrodePairs = {}
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
-    def SelectElectrodePairs(self, **flags):
+    def SelectElectrodePairs(self, selectFunc=None, **flags):
         
         ePairs = []
         
-        # use callback to select electrode pairs
-        if self.selectElectrodePairs:
-            ePairs = self.selectElectrodePairs(self.activeElectrodes, **flags)
+        # in case user passes a select function - overwrite old one
+        if selectFunc:
+            self._selectElectrodePairs = selectFunc
+        
+        # use callback to select electrode pairs - if given
+        if self._selectElectrodePairs:
+            ePairs = self._selectElectrodePairs(self._definedElectrodePairs, **flags)
             
-        # otherwise just sort the list in ascending fashion
+        # otherwise just sort the list in ascending order and return it
         else:
-            for key, val in sorted(self.activeElectrodes.items()):
+            for key, val in sorted(self._definedElectrodePairs.items()):
                 ePairs.append( val )
                 
         return ePairs
@@ -369,17 +382,76 @@ class ArduinoCore(CoreDevice):
             
 ###############################################################################
 ###############################################################################
-###                     --- DEBUG CODE HERE ---                             ###
+###                      --- YOUR CODE HERE ---                             ###
 ###############################################################################
 ###############################################################################
+
+def MySelectElectrodePairFunction(definedElectrodePairs, **flags):
+    ''' user defined selection and sorting of previously defined electrode pairs
+    '''
+    
+    # init return value
+    selectedElectrodePairs = []
+    
+    # just select even electrode pairs
+    for ePair in definedElectrodePairs.values():
+        if ePair['ePair'] % 2 == 0:
+            selectedElectrodePairs.append(ePair)
+            
+    # and reverse order
+    selectedElectrodePairs.reverse()
+    
+    return selectedElectrodePairs
+    
+    
+def MySelectElectrodePairFunctionWithFlags(definedElectrodePairs, **flags):
+    ''' user defined selection and sorting of previously defined electrode pairs
+    '''
+    
+    # init return value
+    selectedElectrodePairs = []
+ 
+    # try to grab mode from flags
+    # if not there use 'even' as default
+    mode = flags.get('mode', 'even')
+    
+    # try to grab order from flags
+    # if not there use 'ascending' as default
+    order = flags.get('order', 'ascending')
+    
+    # define remainder according to mode
+    if mode == 'even':
+        remainder = 0
+    elif mode == 'odd':
+        remainder = 1
+    else:
+        print('ERROR: Unknown mode: %s' % mode)
+        return
+    
+    # just select even electrode pairs
+    for ePair in definedElectrodePairs.values():
+        if ePair['ePair'] % 2 == remainder :
+            selectedElectrodePairs.append(ePair)
+            
+    # reverse order, if user wants to
+    if order == 'descending':
+        selectedElectrodePairs.reverse()
+    
+    return selectedElectrodePairs
+    
 
 if __name__ == '__main__':
     
     # create Arduino instance
     arduino = ArduinoCore()
+#    # change source for switch config file
+#    arduino = ArduinoCore(switchConfig='./SwitchConfig.json')
+#    
+#    # change source for chip config file
+#    arduino.UpdateConfig(chipConfig='./ChipConfig.json')
     
     # enable debug mode here to catch incoming messages
-    arduino._debugMode = True
+    arduino.EnableDebug()
     
     # execute blinking test to check the connection and proper running of Arduino code
     arduino.SendMessage('test')
@@ -390,14 +462,50 @@ if __name__ == '__main__':
     # print all available commands
     arduino.SendMessage('help')
     
-    # enable debug mode for Arduino
-    arduino.SendMessage('debug 1')
+    
+    #######################################################
+    ### --- FIRST OPTION TO SEND A SETUP TO ARDUINO --- ###
+    #######################################################
     
     # generate debug stream and send command
+    # use one of the fixed switch assignments on the PCB - a short between two switches
     arduino.SendMessage( 'setelectrodes 1 %s' % arduino.GenerateSendStream('short') )
     
-    # generate byte stream to select first electrode pair
-    arduino.SendMessage( 'setelectrodes 1 %s' % arduino.GenerateSendStream(0)       )
     
-    # disable debug mode for Arduino
-    arduino.SendMessage('debug 0')
+    ########################################################
+    ### --- SECOND OPTION TO SEND A SETUP TO ARDUINO --- ###
+    ########################################################
+    
+    # let's define an electrode pair setup
+    # time is given in us --> 1e6 us = 1 s
+    arduino.DefineElectrodePair(  0, 1e6   )
+    # another one here for 500 ms
+    arduino.DefineElectrodePair(  5, 500e3 )
+    # and a third one for 3 s
+    arduino.DefineElectrodePair( 12, 3e6   )
+    
+    # write all three setups to Arduino - ascending order will be used
+    arduino.SetupArduino()
+    
+    # start timer for Arduino to switch between the different setups
+    arduino.Start()
+    
+    # we have defined three setups with in total 4.5 s - so let's wait 5 s
+    sleep(5)
+    
+    # stop Arduino
+    arduino.Stop()
+    
+    # do not show debug messages
+    arduino.logger.setLevel('INFO')
+    
+    # use user defined function to select and/or sort defined electrode pairs and send it to Arduino
+    arduino.SetupArduino(MySelectElectrodePairFunction)
+    
+    # enabled debug messages again
+    arduino.logger.setLevel('DEBUG')
+    
+    # use user defined function to select and/or sort defined electrode pairs and send it to Arduino
+    arduino.SetupArduino(MySelectElectrodePairFunctionWithFlags, mode='odd', order='ascending')
+    
+    arduino.__del__()
