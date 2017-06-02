@@ -17,17 +17,23 @@ try:
     from libs.Logger import Logger
 except ImportError:
     from Logger import Logger
+
+try:
+    from libs import coreUtilities as coreUtils
+except ImportError:
+    import coreUtilities as coreUtils
     
     
 
 class CoreDevice(ComDevice, Logger):
     
-    def __init__(self, **flags):
+    def __init__(self, coreStartTime=None, **flags):
         
-        logFile       = flags.get('logFile')
-        logLevel      = flags.get('logLevel')
-        detCallback   = flags.get('detCallback')
-        onDetCallback = flags.get('onDetCallback')
+        self.coreStartTime = coreStartTime if coreStartTime else coreUtils.GetDateTimeAsString()
+        logFile            = flags.get( 'logFile'       )
+        logLevel           = flags.get( 'logLevel'      )
+        detCallback        = flags.get( 'detCallback'   )
+        onDetCallback      = flags.get( 'onDetCallback' )
         
         if detCallback:
             flags.pop('detCallback')
@@ -35,7 +41,7 @@ class CoreDevice(ComDevice, Logger):
             flags.pop('onDetCallback')
         
         # initialize logger
-        Logger.__init__(self, logFile=logFile, logLevel=logLevel)
+        Logger.__init__(self, logFile=logFile, logLevel=logLevel, startTime=self.coreStartTime)
         
         # initialize com port
         ComDevice.__init__(self, detCallback, onDetCallback, **flags)

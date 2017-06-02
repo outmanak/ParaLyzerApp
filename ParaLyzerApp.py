@@ -158,7 +158,7 @@ class ParaLyzerApp(Logger, StatusBar):
                     'ard'        : False,
                     'hf2'        : False,
                     'til'        : False,
-                    'dbg'        : False,
+                    'debugMode'  : False,
                     'cnti'       : False,
                     'viai'       : False,
                     'swt'        : False,
@@ -627,6 +627,13 @@ class ParaLyzerApp(Logger, StatusBar):
                     self.ckbtns[key].select()
                 else:
                     self.ckbtns[key].deselect()
+            
+            # special treatment for debug mode, since keys in ckbtn list are only three letters
+            elif 'debugMode' in guiFlags.keys():
+                if guiFlags['debugMode']:
+                    self.ckbtns['dbg'].select()
+                else:
+                    self.ckbtns['dbg'].deselect()
                     
         self.UpdateStreamFlags(**guiFlags)
             
@@ -635,12 +642,12 @@ class ParaLyzerApp(Logger, StatusBar):
     def UpdateStreamFlags(self, **flags):
         
         # get new value from flag or use old one
-        self.streamFlags['dbg' ] = flags.get( 'dbg', self.streamFlags['dbg' ] )
-        self.streamFlags['cnti'] = flags.get( 'std', self.streamFlags['cnti'] )
-        self.streamFlags['viai'] = flags.get( 'std', self.streamFlags['viai'] )
-        self.streamFlags['ard' ] = flags.get( 'ard', self.streamFlags['ard' ] )
-        self.streamFlags['hf2' ] = flags.get( 'hf2', self.streamFlags['hf2' ] )
-        self.streamFlags['til' ] = flags.get( 'til', self.streamFlags['til' ] )
+        self.streamFlags['debugMode' ] = flags.get( 'debugMode', self.streamFlags['debugMode' ] )
+        self.streamFlags['cnti']       = flags.get( 'std'      , self.streamFlags['cnti']       )
+        self.streamFlags['viai']       = flags.get( 'std'      , self.streamFlags['viai']       )
+        self.streamFlags['ard' ]       = flags.get( 'ard'      , self.streamFlags['ard' ]       )
+        self.streamFlags['hf2' ]       = flags.get( 'hf2'      , self.streamFlags['hf2' ]       )
+        self.streamFlags['til' ]       = flags.get( 'til'      , self.streamFlags['til' ]       )
             
 ### -------------------------------------------------------------------------------------------------------------------------------
     
@@ -653,7 +660,6 @@ class ParaLyzerApp(Logger, StatusBar):
         self.entrs[key].delete   ( 0, tk.END       )
         self.entrs[key].insert   ( 0, text         )
         self.entrs[key].configure( state=state     )
-        
             
 ### -------------------------------------------------------------------------------------------------------------------------------
     

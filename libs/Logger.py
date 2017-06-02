@@ -14,19 +14,20 @@ except ImportError:
 
 class Logger:
     
-    def __init__(self, logToFile=False, logFile=None, logLevel=None):
+    def __init__(self, logToFile=False, logFile=None, logLevel=None, startTime=None):
             
         self._logFile    = logFile
         self._logToFile  = logToFile
         self._caller     = self.__class__.__name__        # use parent name for logger init
         self._logLevel   = logLevel if logLevel else log.DEBUG
+        self._startTime  = startTime if startTime else coreUtils.GetDateTimeAsString()
         
         # write anyway to file
         if self._logFile:
             self._logToFile = True
         # do we need to create a new name?
         elif self._logToFile:
-            self._logFile = 'session_' + coreUtils.GetDateTimeAsString() + '.log'
+            self._logFile = 'session_' + self._startTime + '.log'
             
         # initialize logger
         # create logger with callers name

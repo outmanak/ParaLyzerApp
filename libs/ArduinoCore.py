@@ -90,7 +90,7 @@ class ArduinoCore(CoreDevice):
         success = True
         
         if chipConfig:
-            self._chipConfig = coreUtils.LoadJsonFile( chipConfig, __name__ )
+            self._chipConfig = coreUtils.LoadJsonFile( chipConfig, self )
             
             if self._chipConfig != {}:
                 self.chipConfigStatus = True
@@ -100,7 +100,7 @@ class ArduinoCore(CoreDevice):
                 self.logger.error('Could not find chip config file: %s' % chipConfig)
                 
         if switchConfig:
-            self._switchConfig = coreUtils.LoadJsonFile( switchConfig, __name__ )
+            self._switchConfig = coreUtils.LoadJsonFile( switchConfig, self )
             
             if self._switchConfig != {}:
                 self.switchConfigStatus = True

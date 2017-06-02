@@ -12,23 +12,35 @@ import scipy as sp
 
 from time import sleep, time, perf_counter
 
-from libs import coreUtilities as coreUtils
-from libs.CoreDevice import CoreDevice
+# in case this guy is used somewhere else
+# we need different loading of modules
+try:
+    from libs.CoreDevice import CoreDevice
+except ImportError:
+    from CoreDevice import CoreDevice
+
+try:
+    from libs import coreUtilities as coreUtils
+except ImportError:
+    import coreUtilities as coreUtils
 
 
 class Hf2Core(CoreDevice):
     
-    _deviceId       = ['dev10', 'dev275']
-    _deviceApiLevel = 1
+    __deviceId__         = ['dev10', 'dev275']
+    __deviceApiLevel__   = 1
         
-    _recordingDevices = '/demods/*/sample'   # device is added later...
+    __recordingDevices__ = '/demods/*/sample'   # device ID is added later...
     
-    _maxStrmFlSize = 10     # 10 MB
-    _maxStrmTime   = 0.5    # 0.5 min
+    __maxStrmFlSize__    = 10     # 10 MB
+    __maxStrmTime__      = 0.5    # 0.5 min
+    
+    # supported stream modes
+    __storageModes__     = ['fileSize', 'recTime', 'tilterSync']
     
 ### -------------------------------------------------------------------------------------------------------------------------------
     
-    def __init__(self, baseStreamFolder='./mat_files', **flags):
+    def __init__(self, baseStreamFolder='./mat_files', storageMode='fileSize', **flags):
         
         # store chosen device name here
         self.deviceName = None
@@ -44,21 +56,29 @@ class Hf2Core(CoreDevice):
         self._pollLocker = threading.Lock()
         
         # not know so far, cause no device is connected
-        self.recordingDevices = ''
+        self._recordingDevices = ''
         
-        self.recordString = 'Stopped.'
+        self._recordString = 'Stopped.'
         
         # flags if somethign during recording went wrong
-        self.recordFlags = {
+        self._recordFlags = {
                     'dataloss'        : False,
                     'invalidtimestamp': False
                 }
         
         # variables to count streams (folder + files)
-        self.baseStreamFolder = baseStreamFolder
-        self.streamFolder     = baseStreamFolder
-        self.strmFlCnt        = 0
-        self.strmFldrCnt      = 0
+        self._baseStreamFolder = baseStreamFolder
+        self._streamFolder     = baseStreamFolder
+        self._strmFlCnt        = 0
+        self._strmFldrCnt      = 0
+        
+        # check if folder is available, if not create
+        coreUtils.SafeMakeDir(self._baseStreamFolder, self)
+        
+        if storageMode in self.__storageModes__:
+            self._storageMode = storageMode
+        else:
+            raise Exception('Unsupported storage mode: %s' % storageMode)
         
         flags['detCallback'] = self.DetectDeviceAndSetupPort
         
@@ -77,22 +97,22 @@ class Hf2Core(CoreDevice):
         
     def DetectDeviceAndSetupPort(self):
         
-        for device in self._deviceId:
+        for device in self.__deviceId__:
             
             self.logger.info('Try to detect %s...' % device)
             
             try:
-                (daq, device, props) = zhinst.utils.create_api_session( device, self._deviceApiLevel )
+                (daq, device, props) = zhinst.utils.create_api_session( device, self.__deviceApiLevel__ )
             except RuntimeError:
                 self.logger.info('Could not be found')
             else:
                 self.logger.info('Created API session for \'%s\' on \'%s:%s\' with api level \'%s\'' % (device, props['serveraddress'], props['serverport'], props['apilevel']))
                 
-                self.deviceName       = device
-                self.comPort          = daq
-                self.comPortStatus    = props['available']
-                self.comPortInfo      = ['', '%s on %s:%s' % (device.capitalize(), props['serveraddress'], props['serverport'])]
-                self.recordingDevices = '/' + device + self._recordingDevices
+                self.deviceName        = device
+                self.comPort           = daq
+                self.comPortStatus     = props['available']
+                self.comPortInfo       = ['', '%s on %s:%s' % (device.capitalize(), props['serveraddress'], props['serverport'])]
+                self._recordingDevices = '/' + device + self.__recordingDevices__
                 
                 # no need to search further
                 break
@@ -109,21 +129,21 @@ class Hf2Core(CoreDevice):
         # check if stream folder was given
         if sF:
             if coreUtils.IsAccessible(sF, 'write'):
-                self.streamFolder = sF
+                self._streamFolder = sF
                 useGivenStreamFolder = True
             
             # if not, try to create new folders
         if not sF or not useGivenStreamFolder:
-            sF = self.baseStreamFolder
-            if coreUtils.SafeMakeDir(sF):
+            sF = self._baseStreamFolder
+            if coreUtils.SafeMakeDir(sF, self):
                 sF += '/session_' + self.coreStartTime + '/'
-                if coreUtils.SafeMakeDir(sF):
+                if coreUtils.SafeMakeDir(sF, self):
                     sF += 'stream%04d/' % self.strmFldrCnt
-                    if coreUtils.SafeMakeDir(sF):
+                    if coreUtils.SafeMakeDir(sF, self):
                         # set new stream folder to class var
-                        self.streamFolder = sF
+                        self._streamFolder = sF
                         # increment folder counter for multiple streams
-                        self.strmFldrCnt += 1
+                        self._strmFldrCnt += 1
                     else:
                         success = False
             
@@ -131,13 +151,13 @@ class Hf2Core(CoreDevice):
         if success:
             
             # initialize new thread
-            self.pollThread = threading.Thread(target=self.PollDataFromHF2)
+            self._pollThread = threading.Thread(target=self._PollData)
             # once polling thread is started loop is running till StopPoll() was called
             self._poll = True
             # start parallel thread
-            self.pollThread.start()
+            self._pollThread.start()
             
-            self.recordString = 'Recording...'
+            self._recordString = 'Recording...'
         
         return success
         
@@ -146,7 +166,8 @@ class Hf2Core(CoreDevice):
     def StopPoll(self, **flags):
         
         if self._poll:
-            self._poll = True
+            # end loop in _PollData method
+            self._poll = False
             # end poll thread
             self.pollThread.join()
             
@@ -183,13 +204,15 @@ class Hf2Core(CoreDevice):
         streamTime = time()
 
         # clear from last run
-        self.dataloss     = False
-        self.invTimeStamp = False
+        self._recordFlags = {
+                        'dataloss':False,
+                        'invTimeStamp':False
+                    }
         
         # check status of device... start if OK
         if self.comPortStatus:
             
-            self.comPort.subscribe(self.recordingDevices)
+            self.comPort.subscribe(self._recordingDevices)
             
             # clear old data from polling buffer
             self.comPort.sync()
@@ -197,7 +220,7 @@ class Hf2Core(CoreDevice):
             while self._poll:
                 
                 # lock thread to savely process
-                self.pollLocker.acquire()
+                self._pollLocker.acquire()
                 
                 # for lag debugging
                 self.timer['idx'].append(idx)
@@ -216,19 +239,19 @@ class Hf2Core(CoreDevice):
                 for key in dataBuf.keys():
                     
                     # check if demodulator is already in dict, add if not (with standard structure)
-                    if key not in self.demods.keys():
-                        self.demods.update({key: self.GetStandardRecordStructure()})
+                    if key not in self._demods.keys():
+                        self._demods.update({key: self._GetStandardRecordStructure()})
                     
                     # fill structure with new data
-                    for k in self.demods[key].keys():
+                    for k in self._demods[key].keys():
                         if k in dataBuf[key].keys():
-                            self.demods[key][k] = sp.concatenate( [self.demods[key][k], dataBuf[key][k]] )
+                            self._demods[key][k] = sp.concatenate( [self._demods[key][k], dataBuf[key][k]] )
                             
                             # save flags for later use in GUI
                             # look at dataloss and invalid time stamps
                             if k in ['dataloss', 'invalidtimestamp'] and dataBuf[key][k]:
                                 self.logger.warning('%s was recognized! Data might be corrupted!' % k)
-                                self.recordFlags[k] = True
+                                self._recordFlags[k] = True
                     
                     
 ########################################################
@@ -258,12 +281,12 @@ class Hf2Core(CoreDevice):
                 
                 # if file size is around 10 MB create a new one
 #                if (self.total_size(self.demods) // 1024**2) > (self._maxStrmFlSize-1):
-                if ( time() - streamTime ) / 60 > self._maxStrmTime:
+                if ( time() - streamTime ) / 60 > self.__maxStrmTime__:
                     self.WriteMatFileToDisk()
                     streamTime = time()
                 
                 # critical stuff is done, release lock
-                self.pollLocker.release()
+                self._pollLocker.release()
                     
                     # unsubscribe after finished record event
             self.comPort.unsubscribe('*')
@@ -295,11 +318,11 @@ class Hf2Core(CoreDevice):
 ### -------------------------------------------------------------------------------------------------------------------------------
     
     def GetCurrentStreamFolder(self):
-        return self.streamFolder
+        return self._streamFolder
     
 ### -------------------------------------------------------------------------------------------------------------------------------
     
-    def _WriteMatFileToDisk(self):
+    def WriteMatFileToDisk(self):
         
         # create this just for debugging...
         outFileBuf = {'demods': []}
@@ -310,18 +333,33 @@ class Hf2Core(CoreDevice):
                 buf[k] = self.demods[key][k]
             outFileBuf['demods'].append(buf)
             
-        sp.io.savemat(self.streamFolder+'stream_%05d.mat'%self.strmFlCnt, {'%s'%self.deviceName: outFileBuf})
+        sp.io.savemat(self._streamFolder+'stream_%05d.mat'%self._strmFlCnt, {'%s'%self.deviceName: outFileBuf})
         
         # memory leak was found...try to fix it
-        del self.demods
+        del self._demods
         
         # clear buffer for next recording
-        self.demods = {}
+        self._demods = {}
 
         # increment
-        self.strmFlCnt += 1
+        self._strmFlCnt += 1
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
     def GetRecordingString(self):
-        return self.recordString
+        return self._recordString
+            
+            
+            
+            
+###############################################################################
+###############################################################################
+###                      --- YOUR CODE HERE ---                             ###
+###############################################################################
+###############################################################################
+
+if __name__ == '__main__':
+    
+    hf2 = Hf2Core()
+    
+    

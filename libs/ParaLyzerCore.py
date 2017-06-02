@@ -37,7 +37,7 @@ class ParaLyzerCore(Logger):
                 'stf':  './mat_files/',
                 'stsf': '',
                 'gui': {
-                        'dbg': True                 # enable debug outputs, by default to file
+                        'debugMode': True   # enable debug outputs, by default to log file
                     }
             }
         
@@ -67,9 +67,9 @@ class ParaLyzerCore(Logger):
         
         
         # initialize devices
-        self.arduino = ArduinoCore   ( selectElectrodePairs=self.SetupArduino, **flags, **files )
-        self.hf2     = Hf2Core       ( baseStreamFolder=self.stdConfig['stf'], **flags          )
-        self.tilter  = ChipTilterCore(                                         **flags          )
+        self.arduino = ArduinoCore   ( selectElectrodePairs=self.SelectElectrodePairs, **flags, **files )
+        self.hf2     = Hf2Core       ( baseStreamFolder=self.stdConfig['stf'],         **flags          )
+        self.tilter  = ChipTilterCore(                                                 **flags          )
         self.camera  = None
         
 ### -------------------------------------------------------------------------------------------------------------------------------
@@ -252,33 +252,23 @@ class ParaLyzerCore(Logger):
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
-    def SetupArduino(self, activeElectrodes, **flags):
+    def SelectElectrodePairs(self, definedElectrodePairs, **flags):
         
         ePairs       = []
-        collectFirst = True
-        collectCnt   = False
-        collectVia   = False
         
-        if 'perChamber' in flags:
-            if flags['perChamber']:
-                collectFirst = False
+        collectFirst = not flags.get( 'perChamber', True  )
+        collectCnt   =     flags.get( 'cnti'      , False )
+        collectVia   =     flags.get( 'viai'      , False )
                 
-        if 'cnti' in flags:
-            if flags['cnti']:
-                collectCnt = True
-                
-        if 'viai' in flags:
-            if flags['viai']:
-                collectVia = True
-                
-                
+        # first collect all electrode pairs of one type (or both)
+        # and then sort them ... always first cnt and then via electrode pairs
         if collectFirst:
             
             cntPairs = []
             viaPairs = []
 
             # collect pairs from active electrodes
-            for key, val in sorted(activeElectrodes.items()):
+            for key, val in sorted(definedElectrodePairs.items()):
                 # counting pairs - odd numbers
                 if int(key) % 2:
                     if collectCnt:
@@ -293,7 +283,7 @@ class ParaLyzerCore(Logger):
         
         # just sort the list in ascending fashion
         else:
-            for key, val in sorted(activeElectrodes.items()):
+            for key, val in sorted(definedElectrodePairs.items()):
                 ePairs.append( val )
                 
         return ePairs

@@ -44,7 +44,7 @@ class ComDevice:
         
 ### -------------------------------------------------------------------------------------------------------------------------------
 
-    def __del__(self, caller=__name__):
+    def __del__(self):
         
         self.SaveCloseComPort()
         
@@ -168,7 +168,7 @@ class ComDevice:
         
         success = False
         
-        if self.comPortStatus:
+        if self.comPortStatus and isinstance(self.comPort, serial.serialwin32.Serial):
             # wait until reading/writing was finished
             # or the port is opened/closed by somebody else
             while self._isReadingWriting or self._isAboutToOpenClose:

@@ -46,27 +46,26 @@ def LoadJsonFile(fName, caller='coreUtilities'):
 
 ### -------------------------------------------------------------------------------------------------------------------------------
 
-def DumpJsonFile(jsonStruct, fName, caller='coreUtilities'):
-    
-    success = True
-
-    # get logger from module name
-    logger = log.getLogger(caller)
+def DumpJsonFile(jsonStruct, fName, caller=None):
     
     try:
         # file is opened, read and automatically closed
         with open(fName, 'wt') as f:
             json.dump(jsonStruct, f)
     except PermissionError:
-        logger.error('Could not access file: \'%s\'! Please check permissions...' % fName)
-        success = False
+        if hasattr(caller, 'logger'):
+            caller.logger.error('Could not access file: \'%s\'! Please check permissions...' % fName)
+        else:
+            print('ERROR: Could not access file: \'%s\'! Please check permissions...' % fName)
         raise
     except FileNotFoundError:
-        logger.error('Could not find file: \'%s\'!' % fName)
-        success = False
+        if hasattr(caller, 'logger'):
+            caller.logger.error('Could not find file: \'%s\'!' % fName)
+        else:
+            print('ERROR: Could not find file: \'%s\'!' % fName)
         raise
-        
-    return success
+    else:
+        return True
     
 ### -------------------------------------------------------------------------------------------------------------------------------
     
@@ -93,32 +92,26 @@ def GetFolderFromFilePath(p):
         
 ### -------------------------------------------------------------------------------------------------------------------------------
     
-def GetRelativePath(absPath, caller='coreUtilities'):
-
-    # get logger from module name
-    logger = log.getLogger(caller)
+def GetRelativePath(absPath, caller=None):
     
-    if os.path.isfile(absPath):
-        try:
+    try:
+        if os.path.isfile(absPath):
             relPath = './' + os.path.relpath(absPath).replace('\\', '/')
-        except ValueError:
-            logger.error('Invalid path \'%s\'' % absPath)
-    else:
-        try:
+        else:
             relPath = './' + os.path.split(absPath)[-1] + '/'
-        except TypeError:
-            logger.error('Invalid path \'%s\'' % absPath)
+    except ValueError:
+        if hasattr(caller, 'logger'):
+            caller.logger.error('Invalid path \'%s\'' % absPath)
+        else:
+            print('ERROR: Invalid path \'%s\'' % absPath)
         
     return relPath
     
 ### -------------------------------------------------------------------------------------------------------------------------------
     
-def SafeMakeDir(folder, caller='coreUtilities'):
+def SafeMakeDir(folder, caller=None):
     
     success = True
-
-    # get logger from module name
-    logger = log.getLogger(caller)
     
     # in case user passed file instead of folder...
     if os.path.isfile(folder):
@@ -127,13 +120,16 @@ def SafeMakeDir(folder, caller='coreUtilities'):
     if not os.path.exists(folder):
         try:
             os.makedirs(folder)
-            
-            # try logger, if initialized
-            logger.info('Created folder \'%s\'' % folder)
-                
         except OSError:
-            # try logger, if initialized
-            logger.error('Could not create folder \'%s\'!' % folder)
+            if hasattr(caller, 'logger'):
+                caller.logger.error('Could not create folder \'%s\'!' % folder)
+            else:
+                print('ERROR: Could not create folder \'%s\'!' % folder)
+        else:
+            if hasattr(caller, 'logger'):
+                caller.logger.info('Created folder \'%s\'' % folder)
+            else:
+                print('INFO: Created folder \'%s\'' % folder)
             
     return success
     
